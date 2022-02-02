@@ -97,6 +97,7 @@ struct Notebook {
     QString description;
     QString color;
     QString emailAddress;
+    QStringList sharedWith;
     int accountId;
     QUrl accountIcon;
     bool isDefault;
@@ -112,7 +113,7 @@ struct Notebook {
                 && color == other.color && emailAddress == other.emailAddress
                 && accountId == other.accountId && accountIcon == other.accountIcon
                 && isDefault == other.isDefault && readOnly == other.readOnly && localCalendar == other.localCalendar
-                && excluded == other.excluded;
+                && excluded == other.excluded && sharedWith == other.sharedWith;
     }
 
     bool operator!=(const Notebook other) const
