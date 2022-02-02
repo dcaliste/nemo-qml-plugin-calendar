@@ -582,12 +582,79 @@ QString CalendarManager::convertEventToICalendarSync(const QString &uid, const Q
     return vEvent;
 }
 
+static CalendarData::Event createEventStruct(const KCalendarCore::Incidence::Ptr &e,
+                                             mKCal::Notebook::Ptr notebook)
+{
+    CalendarData::Event event;
+    event.uniqueId = e->uid();
+    event.recurrenceId = e->recurrenceId();
+    event.allDay = e->allDay();
+    event.calendarUid = mCalendar->notebook(e);
+    event.description = e->description();
+    event.displayLabel = e->summary();
+    event.endTime = e->dtEnd();
+    event.location = e->location();
+    event.secrecy = CalendarUtils::convertSecrecy(e);
+    event.readOnly = mStorage->notebook(event.calendarUid)->isReadOnly();
+    event.recur = CalendarUtils::convertRecurrence(e);
+    event.recurWeeklyDays = CalendarUtils::convertDayPositions(e);
+    event.status = CalendarUtils::convertStatus(e);
+    const QString &syncFailure = e->customProperty("VOLATILE", "SYNC-FAILURE");
+    if (syncFailure.compare("upload", Qt::CaseInsensitive) == 0) {
+        event.syncFailure = CalendarEvent::UploadFailure;
+    } else if (syncFailure.compare("update", Qt::CaseInsensitive) == 0) {
+        event.syncFailure = CalendarEvent::UpdateFailure;
+    } else if (syncFailure.compare("delete", Qt::CaseInsensitive) == 0) {
+        event.syncFailure = CalendarEvent::DeleteFailure;
+    }
+    bool externalInvitation = false;
+    const QString &calendarOwnerEmail = getNotebookAddress(e);
+
+    KCalendarCore::Person organizer = e->organizer();
+    const QString organizerEmail = organizer.email();
+    if (!organizerEmail.isEmpty() && organizerEmail != calendarOwnerEmail
+            && (notebook.isNull() || !notebook->sharedWith().contains(organizerEmail))) {
+        externalInvitation = true;
+    }
+    event.externalInvitation = externalInvitation;
+
+    // It would be good to set the attendance status directly in the event within the plugin,
+    // however in some cases the account email and owner attendee email won't necessarily match
+    // (e.g. in the case where server-side aliases are defined but unknown to the plugin).
+    // So we handle this here to avoid "missing" some status changes due to owner email mismatch.
+    // This defaults to QString() -> ResponseUnspecified in case the property is undefined
+    event.ownerStatus = CalendarUtils::convertResponseType(e->nonKDECustomProperty("X-EAS-RESPONSE-TYPE"));
+
+    const KCalendarCore::Attendee::List attendees = e->attendees();
+    for (const KCalendarCore::Attendee &calAttendee : attendees) {
+        if (calAttendee.email() == calendarOwnerEmail) {
+            if (CalendarUtils::convertPartStat(calAttendee.status()) != CalendarEvent::ResponseUnspecified) {
+                // Override the ResponseType
+                event.ownerStatus = CalendarUtils::convertPartStat(calAttendee.status());
+            }
+            //TODO: KCalendarCore::Attendee::RSVP() returns false even if response was requested for some accounts like Google.
+            // We can use attendee role until the problem is not fixed (probably in Google plugin).
+            // To be updated later when google account support for responses is added.
+            event.rsvp = calAttendee.RSVP();// || calAttendee->role() != KCalendarCore::Attendee::Chair;
+        }
+    }
+
+    KCalendarCore::RecurrenceRule *defaultRule = e->recurrence()->defaultRRule();
+    if (defaultRule) {
+        event.recurEndDate = defaultRule->endDt().date();
+    }
+    event.reminder = CalendarUtils::getReminder(e);
+    event.reminderDateTime = CalendarUtils::getReminderDateTime(e);
+    event.startTime = e->dtStart();
+    return event;
+}
+
 CalendarData::Event CalendarManager::getEvent(const QString &uid, const QDateTime &recurrenceId)
 {
-    QMultiHash<QString, CalendarData::Event>::iterator it = mEvents.find(uid);
+    QMultiHash<QString, KCalendarCore::Incidence::Ptr>::ConstIterator it = mEvents.find(uid);
     while (it != mEvents.end() && it.key() == uid) {
         if (it.value().recurrenceId == recurrenceId) {
-            return it.value();
+            return createEventStruct(it.value());
         }
         ++it;
     }
@@ -788,7 +855,7 @@ QList<CalendarData::Attendee> CalendarManager::getEventAttendees(const QString &
 
 void CalendarManager::dataLoadedSlot(const QList<CalendarData::Range> &ranges,
                                      const QStringList &instanceList,
-                                     const QMultiHash<QString, CalendarData::Event> &events,
+                                     const QMultiHash<QString, KCalendarCore::Incidence::Ptr> &events,
                                      const QHash<QString, CalendarData::EventOccurrence> &occurrences,
                                      const QHash<QDate, QStringList> &dailyOccurrences,
                                      bool reset)

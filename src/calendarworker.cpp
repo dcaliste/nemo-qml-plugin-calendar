@@ -1071,26 +1071,26 @@ void CalendarWorker::findMatchingEvent(const QString &invitationFile)
 {
     KCalendarCore::MemoryCalendar::Ptr cal(new KCalendarCore::MemoryCalendar(QTimeZone::systemTimeZone()));
     CalendarUtils::importFromFile(invitationFile, cal);
-    KCalendarCore::Incidence::List incidenceList = cal->incidences();
-    for (int i = 0; i < incidenceList.size(); i++) {
-        KCalendarCore::Incidence::Ptr incidence = incidenceList.at(i);
-        if (incidence->type() == KCalendarCore::IncidenceBase::TypeEvent) {
-            // Search for this event in the database.
-            loadData(QList<CalendarData::Range>() << qMakePair(incidence->dtStart().date().addDays(-1), incidence->dtStart().date().addDays(1)), QStringList(), false);
-            KCalendarCore::Incidence::List dbIncidences = mCalendar->incidences();
-            Q_FOREACH (KCalendarCore::Incidence::Ptr dbIncidence, dbIncidences) {
-                const QString remoteUidValue(dbIncidence->nonKDECustomProperty("X-SAILFISHOS-REMOTE-UID"));
-                if (dbIncidence->uid().compare(incidence->uid(), Qt::CaseInsensitive) == 0 ||
-                        remoteUidValue.compare(incidence->uid(), Qt::CaseInsensitive) == 0) {
-                    if ((!incidence->hasRecurrenceId() && !dbIncidence->hasRecurrenceId())
-                            || (incidence->hasRecurrenceId() && dbIncidence->hasRecurrenceId()
-                                && incidence->recurrenceId() == dbIncidence->recurrenceId())) {
-                        emit findMatchingEventFinished(invitationFile, createEventStruct(dbIncidence.staticCast<KCalendarCore::Event>(), CalendarData::Notebook()));
-                        return;
-                    }
+    KCalendarCore::Event::List eventList = cal->rawEvents();
+    if (eventList.count() > 0) {
+        // we only attempt to find the very first event, the invitation should only contain one.
+        KCalendarCore::Incidence::Ptr incidence = eventList[0];
+        // Search for this event in the database.
+        loadData(QList<CalendarData::Range>() << qMakePair(incidence->dtStart().date().addDays(-1),
+                                                           incidence->dtStart().date().addDays(1)),
+                 QStringList(), false);
+        KCalendarCore::Incidence::List dbIncidences = mCalendar->incidences();
+        Q_FOREACH (KCalendarCore::Incidence::Ptr dbIncidence, dbIncidences) {
+            const QString remoteUidValue(dbIncidence->nonKDECustomProperty("X-SAILFISHOS-REMOTE-UID"));
+            if (dbIncidence->uid().compare(incidence->uid(), Qt::CaseInsensitive) == 0 ||
+                remoteUidValue.compare(incidence->uid(), Qt::CaseInsensitive) == 0) {
+                if ((!incidence->hasRecurrenceId() && !dbIncidence->hasRecurrenceId())
+                    || (incidence->hasRecurrenceId() && dbIncidence->hasRecurrenceId()
+                        && incidence->recurrenceId() == dbIncidence->recurrenceId())) {
+                    emit findMatchingEventFinished(invitationFile, createEventStruct(dbIncidence.staticCast<KCalendarCore::Event>(), CalendarData::Notebook()));
+                    return;
                 }
             }
-            break; // we only attempt to find the very first event, the invitation should only contain one.
         }
     }
 

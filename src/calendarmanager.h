@@ -44,6 +44,8 @@
 #include "calendarevent.h"
 #include "calendarchangeinformation.h"
 
+#include <KCalendarCore/Incidence>
+
 class CalendarWorker;
 class CalendarAgendaModel;
 class CalendarEventListModel;
@@ -123,7 +125,7 @@ private slots:
     void notebooksChangedSlot(const QList<CalendarData::Notebook> &notebooks);
     void dataLoadedSlot(const QList<CalendarData::Range> &ranges,
                         const QStringList &instanceList,
-                        const QMultiHash<QString, CalendarData::Event> &events,
+                        const QMultiHash<QString, KCalendarCore::Incidence::Ptr> &events,
                         const QHash<QString, CalendarData::EventOccurrence> &occurrences,
                         const QHash<QDate, QStringList> &dailyOccurrences,
                         bool reset);
@@ -146,6 +148,7 @@ signals:
 
 private:
     friend class tst_CalendarManager;
+    friend class tst_CalendarAgendaModel;
 
     void doAgendaAndQueryRefresh();
     bool isRangeLoaded(const QPair<QDate, QDate> &r, QList<CalendarData::Range> *newRanges);
@@ -157,7 +160,7 @@ private:
 
     QThread mWorkerThread;
     CalendarWorker *mCalendarWorker;
-    QMultiHash<QString, CalendarData::Event> mEvents;
+    QMultiHash<QString, KCalendarCore::Incidence::Ptr> mEvents;
     QMultiHash<QString, CalendarEvent *> mEventObjects;
     QHash<QString, CalendarData::EventOccurrence> mEventOccurrences;
     QHash<QDate, QStringList> mEventOccurrenceForDates;

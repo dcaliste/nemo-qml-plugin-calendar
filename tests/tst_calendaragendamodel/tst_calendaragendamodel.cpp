@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Damien Caliste <dcaliste@free.fr>
+ * Copyright (c) 2021-2022 Damien Caliste <dcaliste@free.fr>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -31,8 +31,10 @@
 #include <QObject>
 #include <QSignalSpy>
 #include <QtTest>
+#include <QElapsedTimer>
 
 #include "calendaragendamodel.h"
+#include "calendarworker.h"
 #include "calendareventmodification.h"
 
 #include "plugin.cpp"
@@ -47,6 +49,7 @@ private slots:
     void testStartEndDate();
     void testTimeZone();
     void testAllDays();
+    void testTiming();
 };
 
 void tst_CalendarAgendaModel::initTestCase()
@@ -54,6 +57,7 @@ void tst_CalendarAgendaModel::initTestCase()
     CalendarManager *manager = CalendarManager::instance();
     QSignalSpy *ready = new QSignalSpy(manager, &CalendarManager::notebooksChanged);
     QVERIFY(ready->wait());
+    QVERIFY(!manager->defaultNotebook().isEmpty());
     
     QSignalSpy *modified = new QSignalSpy(manager, &CalendarManager::storageModified);
     CalendarEventModification *event1 = new CalendarEventModification;
@@ -187,6 +191,30 @@ void tst_CalendarAgendaModel::testAllDays()
 
     delete updated;
     delete model;
+}
+
+void tst_CalendarAgendaModel::testTiming()
+{
+    QElapsedTimer clock;
+    CalendarManager *manager = CalendarManager::instance();
+    CalendarAgendaModel *model = new CalendarAgendaModel;
+
+    QSignalSpy *ready = new QSignalSpy(manager, &CalendarManager::notebooksChanged);
+    if (manager->notebooks().isEmpty())
+        QVERIFY(ready->wait());
+
+    QSignalSpy *updated = new QSignalSpy(model, &CalendarAgendaModel::updated);
+    QSignalSpy *loaded = new QSignalSpy(manager->mCalendarWorker, &CalendarWorker::dataLoaded);
+    model->setStartDate(QDate(2021, 1, 1));
+    model->setEndDate(QDate(2021, 12, 31));
+    clock.start();
+    QVERIFY(loaded->wait());
+    qDebug() << "time in the worker thread " << clock.elapsed() << "ms";
+    QVERIFY(updated->wait());
+    qDebug() << "time to populate agenda with" << model->count() << "incidences in" << clock.elapsed() << "ms";
+
+    delete model;
+    delete manager;
 }
 
 #include "tst_calendaragendamodel.moc"
