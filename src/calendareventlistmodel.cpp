@@ -35,6 +35,7 @@
 #include "calendareventoccurrence.h"
 
 #include <QDebug>
+#include <KCalendarCore/Event>
 
 CalendarEventListModel::CalendarEventListModel(QObject *parent)
     : QAbstractListModel(parent), mIsComplete(true)
@@ -117,9 +118,10 @@ void CalendarEventListModel::doRefresh()
 
     for (const QString &id : mIdentifiers) {
         bool loaded;
-        CalendarData::Event event = CalendarManager::instance()->getEvent(id, &loaded);
-        if (event.isValid()) {
-            mEvents.append(new CalendarEventOccurrence(event.uniqueId, event.recurrenceId, event.startTime, event.endTime, this));
+        const CalendarData::Incidence &incidence = CalendarManager::instance()->getIncidence(id, &loaded);
+        if (incidence.data) {
+            mEvents.append(new CalendarEventOccurrence(incidence.data->uid(), incidence.data->recurrenceId(),
+                                                       incidence.data->dtStart(), incidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent ? incidence.data.staticCast<KCalendarCore::Event>()->dtEnd() : QDateTime(), this));
             mEventIdentifiers.append(id);
         } else if (loaded) {
             mMissingItems.append(id);

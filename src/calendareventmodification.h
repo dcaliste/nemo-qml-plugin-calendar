@@ -60,7 +60,7 @@ class CalendarEventModification : public QObject
     Q_PROPERTY(QString calendarUid READ calendarUid WRITE setCalendarUid NOTIFY calendarUidChanged)
 
 public:
-    CalendarEventModification(CalendarData::Event data, QObject *parent = 0);
+    CalendarEventModification(CalendarData::Incidence data, QObject *parent = 0);
     explicit CalendarEventModification(QObject *parent = 0);
     ~CalendarEventModification();
 
@@ -125,10 +125,16 @@ signals:
     void calendarUidChanged();
 
 private:
-    CalendarData::Event m_event;
+    CalendarData::Incidence m_event;
     bool m_attendeesSet;
     QList<CalendarData::EmailContact> m_requiredAttendees;
     QList<CalendarData::EmailContact> m_optionalAttendees;
+    // Cached values, converted into m_event.data on save.
+    CalendarEvent::Recur m_recur;
+    CalendarEvent::Days m_recurWeeklyDays;
+    int m_reminder;
+    QDateTime m_reminderDateTime;
+    QDate m_recurEndDate;
 };
 
 #endif

@@ -39,6 +39,7 @@
 
 // KCalendarCore
 #include <KCalendarCore/Attendee>
+#include <KCalendarCore/Incidence>
 
 #include "calendarevent.h"
 
@@ -55,6 +56,11 @@ struct EventOccurrence {
     {
         return QString("%1-%2").arg(eventUid).arg(startTime.toMSecsSinceEpoch());
     }
+};
+
+struct Incidence {
+    KCalendarCore::Incidence::Ptr data;
+    QString notebookUid;
 };
 
 struct Event {

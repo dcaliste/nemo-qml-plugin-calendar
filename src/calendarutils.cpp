@@ -49,7 +49,7 @@
 #include <QByteArray>
 #include <QtDebug>
 
-CalendarEvent::Recur CalendarUtils::convertRecurrence(const KCalendarCore::Event::Ptr &event)
+CalendarEvent::Recur CalendarUtils::convertRecurrence(const KCalendarCore::Incidence::Ptr &event)
 {
     if (!event->recurs())
         return CalendarEvent::RecurOnce;
@@ -89,7 +89,7 @@ CalendarEvent::Recur CalendarUtils::convertRecurrence(const KCalendarCore::Event
     return CalendarEvent::RecurCustom;
 }
 
-CalendarEvent::Days CalendarUtils::convertDayPositions(const KCalendarCore::Event::Ptr &event)
+CalendarEvent::Days CalendarUtils::convertDayPositions(const KCalendarCore::Incidence::Ptr &event)
 {
     if (!event->recurs())
         return CalendarEvent::NoDays;
@@ -118,7 +118,7 @@ CalendarEvent::Days CalendarUtils::convertDayPositions(const KCalendarCore::Even
     return days;
 }
 
-CalendarEvent::Secrecy CalendarUtils::convertSecrecy(const KCalendarCore::Event::Ptr &event)
+CalendarEvent::Secrecy CalendarUtils::convertSecrecy(const KCalendarCore::Incidence::Ptr &event)
 {
     KCalendarCore::Incidence::Secrecy s = event->secrecy();
     switch (s) {
@@ -132,7 +132,7 @@ CalendarEvent::Secrecy CalendarUtils::convertSecrecy(const KCalendarCore::Event:
     }
 }
 
-CalendarEvent::Status CalendarUtils::convertStatus(const KCalendarCore::Event::Ptr &event)
+CalendarEvent::Status CalendarUtils::convertStatus(const KCalendarCore::Incidence::Ptr &event)
 {
     switch (event->status()) {
     case KCalendarCore::Incidence::StatusTentative:
@@ -147,7 +147,52 @@ CalendarEvent::Status CalendarUtils::convertStatus(const KCalendarCore::Event::P
     }
 }
 
-int CalendarUtils::getReminder(const KCalendarCore::Event::Ptr &event)
+CalendarEvent::SyncFailure CalendarUtils::convertSyncFailure(const KCalendarCore::Incidence::Ptr &event)
+{
+    const QString &syncFailure = event->customProperty("VOLATILE", "SYNC-FAILURE");
+    if (syncFailure.compare("upload", Qt::CaseInsensitive) == 0) {
+        return CalendarEvent::UploadFailure;
+    } else if (syncFailure.compare("update", Qt::CaseInsensitive) == 0) {
+        return CalendarEvent::UpdateFailure;
+    } else if (syncFailure.compare("delete", Qt::CaseInsensitive) == 0) {
+        return CalendarEvent::DeleteFailure;
+    }
+    return CalendarEvent::NoSyncFailure;
+}
+
+bool CalendarUtils::getResponse(const KCalendarCore::Incidence::Ptr &event, const QString &calendarEmail, CalendarEvent::Response *response)
+{
+    // It would be good to set the attendance status directly in the event within the plugin,
+    // however in some cases the account email and owner attendee email won't necessarily match
+    // (e.g. in the case where server-side aliases are defined but unknown to the plugin).
+    // So we handle this here to avoid "missing" some status changes due to owner email mismatch.
+    // This defaults to QString() -> ResponseUnspecified in case the property is undefined
+    if (response)
+        *response = CalendarUtils::convertResponseType(event->nonKDECustomProperty("X-EAS-RESPONSE-TYPE"));
+    const KCalendarCore::Attendee::List attendees = event->attendees();
+    for (const KCalendarCore::Attendee &calAttendee : attendees) {
+        if (calAttendee.email() == calendarEmail) {
+            if (response
+                && CalendarUtils::convertPartStat(calAttendee.status()) != CalendarEvent::ResponseUnspecified) {
+                // Override the ResponseType
+                *response = CalendarUtils::convertPartStat(calAttendee.status());
+            }
+            //TODO: KCalendarCore::Attendee::RSVP() returns false even if response was requested for some accounts like Google.
+            // We can use attendee role until the problem is not fixed (probably in Google plugin).
+            // To be updated later when google account support for responses is added.
+            return calAttendee.RSVP();// || calAttendee->role() != KCalendarCore::Attendee::Chair;
+        }
+    }
+    return false;
+}
+
+bool CalendarUtils::getExternalInvitation(const QString &organizerEmail, const CalendarData::Notebook &notebook)
+{
+    return !organizerEmail.isEmpty() && organizerEmail != notebook.emailAddress
+            && !notebook.sharedWith.contains(organizerEmail);
+}
+
+int CalendarUtils::getReminder(const KCalendarCore::Incidence::Ptr &event)
 {
     KCalendarCore::Alarm::List alarms = event->alarms();
 
@@ -171,7 +216,7 @@ int CalendarUtils::getReminder(const KCalendarCore::Event::Ptr &event)
     return seconds;
 }
 
-QDateTime CalendarUtils::getReminderDateTime(const KCalendarCore::Event::Ptr &event)
+QDateTime CalendarUtils::getReminderDateTime(const KCalendarCore::Incidence::Ptr &event)
 {
     for (const KCalendarCore::Alarm::Ptr &alarm : event->alarms()) {
         if (alarm && alarm->type() == KCalendarCore::Alarm::Display && alarm->hasTime()) {

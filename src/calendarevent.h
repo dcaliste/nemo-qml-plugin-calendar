@@ -36,7 +36,12 @@
 #include <QObject>
 #include <QDateTime>
 
+#include <KCalendarCore/Incidence>
+
 class CalendarManager;
+namespace CalendarData {
+    struct Notebook;
+}
 
 class CalendarEvent : public QObject
 {
@@ -130,9 +135,11 @@ public:
     };
     Q_ENUM(Status)
 
-    CalendarEvent(CalendarManager *manager, const QString &uid, const QDateTime &recurrenceId);
+    CalendarEvent(CalendarManager *manager, KCalendarCore::Incidence::Ptr incidence,
+                  const CalendarData::Notebook *notebook);
     ~CalendarEvent();
 
+    void setIncidence(KCalendarCore::Incidence::Ptr incidence, const CalendarData::Notebook *notebook);
     QString displayLabel() const;
     QString description() const;
     QDateTime startTime() const;
@@ -168,7 +175,7 @@ public:
 
 private slots:
     void notebookColorChanged(QString notebookUid);
-    void eventUidChanged(QString oldUid, QString newUid);
+    // void eventUidChanged(QString oldUid, QString newUid);
 
 signals:
     void displayLabelChanged();
@@ -195,8 +202,17 @@ signals:
 
 private:
     CalendarManager *mManager;
-    QString mUniqueId;
-    QDateTime mRecurrenceId;
+    KCalendarCore::Incidence::Ptr mIncidence;
+    QString mCalendarUid;
+    // Cached values, requiring a processing from mIncidence.
+    Recur mRecur;
+    int mReminder;
+    QDateTime mReminderDateTime;
+    SyncFailure mSyncFailure;
+    bool mReadOnly;
+    bool mRSVP;
+    bool mExternalInvitation;
+    Response mOwnerStatus;
 };
 
 #endif // CALENDAREVENT_H

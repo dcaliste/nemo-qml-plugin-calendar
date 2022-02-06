@@ -65,10 +65,10 @@ public:
 
     CalendarEvent* eventObject(const QString &eventUid, const QDateTime &recurrenceId);
 
-    void saveModification(CalendarData::Event eventData, bool updateAttendees,
+    void saveModification(const CalendarData::Incidence &eventData, bool updateAttendees,
                           const QList<CalendarData::EmailContact> &required,
                           const QList<CalendarData::EmailContact> &optional);
-    CalendarChangeInformation * replaceOccurrence(CalendarData::Event eventData,
+    CalendarChangeInformation * replaceOccurrence(const CalendarData::Incidence &eventData,
                                                   CalendarEventOccurrence *occurrence,
                                                   bool updateAttendees,
                                                   const QList<CalendarData::EmailContact> &required,
@@ -81,9 +81,10 @@ public:
     QString convertEventToICalendarSync(const QString &uid, const QString &prodId);
 
     // Event
-    CalendarData::Event getEvent(const QString& instanceIdentifier, bool *loaded = nullptr) const;
+    CalendarData::Incidence getIncidence(const QString &uid, const QDateTime &recurrenceId) const;
+    CalendarData::Incidence getIncidence(const QString &instanceIdentifier, bool *loaded) const;
     CalendarData::Event getEvent(const QString& uid, const QDateTime &recurrenceId);
-    bool sendResponse(const CalendarData::Event &eventData, CalendarEvent::Response response);
+    bool sendResponse(const CalendarData::Incidence &incidence, CalendarEvent::Response response);
 
     // Notebooks
     QList<CalendarData::Notebook> notebooks();
@@ -125,16 +126,16 @@ private slots:
     void notebooksChangedSlot(const QList<CalendarData::Notebook> &notebooks);
     void dataLoadedSlot(const QList<CalendarData::Range> &ranges,
                         const QStringList &instanceList,
-                        const QMultiHash<QString, KCalendarCore::Incidence::Ptr> &events,
+                        const QMultiHash<QString, CalendarData::Incidence> &events,
                         const QHash<QString, CalendarData::EventOccurrence> &occurrences,
                         const QHash<QDate, QStringList> &dailyOccurrences,
                         bool reset);
     void timeout();
-    void occurrenceExceptionFailedSlot(const CalendarData::Event &data, const QDateTime &occurrence);
-    void occurrenceExceptionCreatedSlot(const CalendarData::Event &data, const QDateTime &occurrence,
+    void occurrenceExceptionFailedSlot(const CalendarData::Incidence &data, const QDateTime &occurrence);
+    void occurrenceExceptionCreatedSlot(const CalendarData::Incidence &data, const QDateTime &occurrence,
                                         const QDateTime &newRecurrenceId);
     void findMatchingEventFinished(const QString &invitationFile,
-                                   const CalendarData::Event &event);
+                                   const CalendarData::Incidence &event);
 
 signals:
     void excludedNotebooksChanged(QStringList excludedNotebooks);
@@ -155,12 +156,12 @@ private:
     QList<CalendarData::Range> addRanges(const QList<CalendarData::Range> &oldRanges,
                                          const QList<CalendarData::Range> &newRanges);
     void updateAgendaModel(CalendarAgendaModel *model);
-    void sendEventChangeSignals(const CalendarData::Event &newEvent,
-                                const CalendarData::Event &oldEvent);
+    CalendarEvent* findEventObject(const QString &eventUid, const QDateTime &recurrenceId);
+    CalendarData::Event createEventStruct(const CalendarData::Incidence &e) const;
 
     QThread mWorkerThread;
     CalendarWorker *mCalendarWorker;
-    QMultiHash<QString, KCalendarCore::Incidence::Ptr> mEvents;
+    QMultiHash<QString, CalendarData::Incidence> mEvents;
     QMultiHash<QString, CalendarEvent *> mEventObjects;
     QHash<QString, CalendarData::EventOccurrence> mEventOccurrences;
     QHash<QDate, QStringList> mEventOccurrenceForDates;
@@ -172,7 +173,7 @@ private:
     QHash<QString, CalendarData::Notebook> mNotebooks;
 
     struct OccurrenceData {
-        CalendarData::Event event;
+        CalendarData::Incidence event;
         QDateTime occurrenceTime;
         QPointer<CalendarChangeInformation> changeObject;
     };

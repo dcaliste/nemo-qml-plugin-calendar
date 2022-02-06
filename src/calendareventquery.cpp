@@ -66,8 +66,8 @@ void CalendarEventQuery::setUniqueId(const QString &uid)
     mUid = uid;
     emit uniqueIdChanged();
 
-    if (mEvent.isValid()) {
-        mEvent = CalendarData::Event();
+    if (mEvent.data) {
+        mEvent = CalendarData::Incidence();
         emit eventChanged();
     }
     if (mOccurrence) {
@@ -126,7 +126,7 @@ void CalendarEventQuery::resetStartTime()
 
 QObject *CalendarEventQuery::event() const
 {
-    if (mEvent.isValid() && mEvent.uniqueId == mUid)
+    if (mEvent.data && mEvent.data->uid() == mUid)
         return CalendarManager::instance()->eventObject(mUid, mRecurrenceId);
     else
         return nullptr;
@@ -161,25 +161,29 @@ void CalendarEventQuery::componentComplete()
     refresh();
 }
 
-void CalendarEventQuery::doRefresh(CalendarData::Event event, bool eventError)
+void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool eventError)
 {
     // The value of mUid may have changed, verify that we got what we asked for
-    if (event.isValid() && (event.uniqueId != mUid || event.recurrenceId != mRecurrenceId))
+    if (event.data && (event.data->uid() != mUid || event.data->recurrenceId() != mRecurrenceId))
         return;
 
     bool updateOccurrence = false;
     bool signalEventChanged = false;
 
-    if (event.uniqueId != mEvent.uniqueId || event.recurrenceId != mEvent.recurrenceId) {
+    if (!mEvent.data || event.data->uid() != mEvent.data->uid()
+        || event.data->recurrenceId() != mEvent.data->recurrenceId()) {
         mEvent = event;
         signalEventChanged = true;
         updateOccurrence = true;
-    } else if (mEvent.isValid()) { // The event may have changed even if the pointer did not
-        if (mEvent.allDay != event.allDay
-                || mEvent.endTime != event.endTime
-                || mEvent.recur != event.recur
-                || event.recur == CalendarEvent::RecurCustom
-                || mEvent.startTime != event.startTime) {
+    } else if (mEvent.data) { // The event may have changed even if the pointer did not
+        CalendarEvent::Recur recur = event.data ? CalendarUtils::convertRecurrence(event.data) : CalendarEvent::RecurOnce;
+        if (!event.data 
+            || mEvent.data->allDay() != event.data->allDay()
+                || (mEvent.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+                    && mEvent.data.staticCast<KCalendarCore::Event>()->dtEnd() != event.data.staticCast<KCalendarCore::Event>()->dtEnd())
+                || CalendarUtils::convertRecurrence(mEvent.data) != recur
+                || recur == CalendarEvent::RecurCustom
+                || mEvent.data->dtStart() != event.data->dtStart()) {
             mEvent = event;
             updateOccurrence = true;
         }
@@ -189,7 +193,7 @@ void CalendarEventQuery::doRefresh(CalendarData::Event event, bool eventError)
         delete mOccurrence;
         mOccurrence = 0;
 
-        if (mEvent.isValid()) {
+        if (mEvent.data) {
             CalendarEventOccurrence *occurrence = CalendarManager::instance()->getNextOccurrence(
                     mUid, mRecurrenceId, mStartTime);
             if (occurrence) {
