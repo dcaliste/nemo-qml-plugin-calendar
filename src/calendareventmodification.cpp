@@ -378,8 +378,7 @@ static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
 
 void CalendarEventModification::save()
 {
-    updateReminder(mIncidence.data, mReminder, mReminderDateTime);
-    updateRecurrence(mIncidence.data, mRecur, mRecurWeeklyDays, mRecurEndDate);
+    updateIncidence();
     if (m_attendeesSet)
         updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
 
@@ -389,8 +388,7 @@ void CalendarEventModification::save()
 CalendarChangeInformation *
 CalendarEventModification::replaceOccurrence(CalendarEventOccurrence *occurrence)
 {
-    updateReminder(mIncidence.data, mReminder, mReminderDateTime);
-    updateRecurrence(mIncidence.data, mRecur, mRecurWeeklyDays, mRecurEndDate);
+    updateIncidence();
     if (m_attendeesSet)
         updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
 

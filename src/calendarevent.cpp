@@ -79,6 +79,12 @@ void CalendarEvent::cacheIncidence()
     mSyncFailure = CalendarUtils::convertSyncFailure(mIncidence.data);
 }
 
+void CalendarEvent::updateIncidence()
+{
+    updateReminder(mIncidence.data, mReminder, mReminderDateTime);
+    updateRecurrence(mIncidence.data, mRecur, mRecurWeeklyDays, mRecurEndDate);
+}
+
 QString CalendarEvent::displayLabel() const
 {
     return mIncidence.data->summary();
