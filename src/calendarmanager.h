@@ -89,7 +89,6 @@ public:
     void setExcludedNotebooks(const QStringList &list);
     void excludeNotebook(const QString &notebookUid, bool exclude);
     void setNotebookColor(const QString &notebookUid, const QString &color);
-    QString getNotebookColor(const QString &notebookUid) const;
     QString getNotebookEmail(const QString &notebookUid) const;
 
     // AgendaModel

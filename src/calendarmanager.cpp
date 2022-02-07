@@ -53,6 +53,7 @@ CalendarManager::CalendarManager()
     qRegisterMetaType<QList<QDateTime> >("QList<QDateTime>");
     qRegisterMetaType<CalendarEvent::Recur>("CalendarEvent::Recur");
     qRegisterMetaType<QHash<QString,CalendarData::EventOccurrence> >("QHash<QString,CalendarData::EventOccurrence>");
+    qRegisterMetaType<CalendarData::Incidence>("CalendarData::Incidence");
     qRegisterMetaType<QMultiHash<QString,CalendarData::Incidence> >("QMultiHash<QString,CalendarData::Incidence>");
     qRegisterMetaType<QHash<QDate,QStringList> >("QHash<QDate,QStringList>");
     qRegisterMetaType<CalendarData::Range>("CalendarData::Range");
@@ -233,11 +234,6 @@ void CalendarManager::setNotebookColor(const QString &notebookUid, const QString
     QMetaObject::invokeMethod(mCalendarWorker, "setNotebookColor", Qt::QueuedConnection,
                               Q_ARG(QString, notebookUid),
                               Q_ARG(QString, color));
-}
-
-QString CalendarManager::getNotebookColor(const QString &notebookUid) const
-{
-    return mNotebooks.value(notebookUid).color;
 }
 
 QString CalendarManager::getNotebookEmail(const QString &notebookUid) const
