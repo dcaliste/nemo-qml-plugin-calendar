@@ -41,7 +41,7 @@
 #include "calendarchangeinformation.h"
 #include "calendarcontactmodel.h"
 
-class CalendarEventModification : public QObject
+class CalendarEventModification : public CalendarEvent
 {
     Q_OBJECT
     Q_PROPERTY(QString displayLabel READ displayLabel WRITE setDisplayLabel NOTIFY displayLabelChanged)
@@ -64,10 +64,8 @@ public:
     explicit CalendarEventModification(QObject *parent = 0);
     ~CalendarEventModification();
 
-    QString displayLabel() const;
     void setDisplayLabel(const QString &displayLabel);
 
-    QString description() const;
     void setDescription(const QString &description);
 
     QDateTime startTime() const;
@@ -76,32 +74,21 @@ public:
     QDateTime endTime() const;
     Q_INVOKABLE void setEndTime(const QDateTime &endTime, Qt::TimeSpec spec, const QString &timezone = QString());
 
-    bool allDay() const;
     void setAllDay(bool);
 
-    CalendarEvent::Recur recur() const;
     void setRecur(CalendarEvent::Recur);
 
-    QDateTime recurEndDate() const;
-    bool hasRecurEndDate() const;
     Q_INVOKABLE void setRecurEndDate(const QDateTime &dateTime);
     Q_INVOKABLE void unsetRecurEndDate();
 
-    CalendarEvent::Days recurWeeklyDays() const;
     void setRecurWeeklyDays(CalendarEvent::Days days);
 
-    QString recurrenceIdString() const;
-
-    int reminder() const;
     void setReminder(int seconds);
 
-    QDateTime reminderDateTime() const;
     void setReminderDateTime(const QDateTime &dateTime);
 
-    QString location() const;
     void setLocation(const QString &newLocation);
 
-    QString calendarUid() const;
     void setCalendarUid(const QString &uid);
 
     Q_INVOKABLE void setAttendees(CalendarContactModel *required, CalendarContactModel *optional);
@@ -125,16 +112,9 @@ signals:
     void calendarUidChanged();
 
 private:
-    CalendarData::Incidence m_event;
     bool m_attendeesSet;
     QList<CalendarData::EmailContact> m_requiredAttendees;
     QList<CalendarData::EmailContact> m_optionalAttendees;
-    // Cached values, converted into m_event.data on save.
-    CalendarEvent::Recur m_recur;
-    CalendarEvent::Days m_recurWeeklyDays;
-    int m_reminder;
-    QDateTime m_reminderDateTime;
-    QDate m_recurEndDate;
 };
 
 #endif

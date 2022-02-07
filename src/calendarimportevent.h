@@ -40,7 +40,7 @@
 
 #include "calendarevent.h"
 
-class CalendarImportEvent : public QObject
+class CalendarImportEvent : public CalendarEvent
 {
     Q_OBJECT
     Q_PROPERTY(QString displayLabel READ displayLabel CONSTANT)
@@ -66,28 +66,15 @@ class CalendarImportEvent : public QObject
 public:
     CalendarImportEvent(KCalendarCore::Event::Ptr event);
 
-    QString displayLabel() const;
-    QString description() const;
-    QDateTime startTime() const;
-    QDateTime endTime() const;
-    bool allDay() const;
-    CalendarEvent::Recur recur();
-    CalendarEvent::Days recurWeeklyDays();
-    int reminder() const;
-    QDateTime reminderDateTime() const;
-    QString uniqueId() const;
-    QString color() const;
     bool readOnly() const;
-    QString location() const;
+    CalendarEvent::Response ownerStatus() const;
+    bool rsvp() const;
+
     QList<QObject*> attendees() const;
-    CalendarEvent::Secrecy secrecy() const;
     QString organizer() const;
     QString organizerEmail() const;
 
     void setColor(const QString &color);
-
-    CalendarEvent::Response ownerStatus() const;
-    bool rsvp() const;
 
     Q_INVOKABLE bool sendResponse(int response);
 
@@ -96,9 +83,5 @@ public slots:
 
 signals:
     void colorChanged();
-
-private:
-    KCalendarCore::Event::Ptr mEvent;
-    QString mColor;
 };
 #endif // CALENDARIMPORTEVENT_H

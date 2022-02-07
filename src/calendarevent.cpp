@@ -39,113 +39,54 @@
 #include "calendarutils.h"
 #include "calendarmanager.h"
 
-CalendarEvent::CalendarEvent(CalendarManager *manager, KCalendarCore::Incidence::Ptr incidence, const CalendarData::Notebook *notebook)
-    : QObject(manager)
-    , mManager(manager)
-    , mRSVP(false)
-    , mExternalInvitation(false)
-    , mOwnerStatus(CalendarEvent::ResponseUnspecified)
+CalendarEvent::CalendarEvent(QObject *parent)
+    : QObject(parent)
+    , mIncidence(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(new KCalendarCore::Event), QString()})
 {
-    connect(mManager, &CalendarManager::notebookColorChanged, this, &CalendarEvent::notebookColorChanged);
-    // connect(mManager, SIGNAL(eventUidChanged(QString,QString)),
-    //         this, SLOT(eventUidChanged(QString,QString)));
-    setIncidence(incidence, notebook);
+}
+
+CalendarEvent::CalendarEvent(KCalendarCore::Incidence::Ptr incidence, QObject *parent)
+    : QObject(parent)
+    , mIncidence(CalendarData::Incidence{incidence ? KCalendarCore::Incidence::Ptr(incidence) : KCalendarCore::Incidence::Ptr(new KCalendarCore::Event), QString()})
+{
+    cacheIncidence();
+}
+
+CalendarEvent::CalendarEvent(const CalendarData::Incidence &incidence, QObject *parent)
+    : QObject(parent)
+    , mIncidence(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(incidence.data->clone()), incidence.notebookUid})
+{
+    cacheIncidence();
 }
 
 CalendarEvent::~CalendarEvent()
 {
 }
 
-void CalendarEvent::setIncidence(KCalendarCore::Incidence::Ptr incidence, const CalendarData::Notebook *notebook)
+void CalendarEvent::cacheIncidence()
 {
-    const bool mAllDayChanged = mIncidence->allDay() != incidence->allDay();
-    const bool mSummaryChanged = mIncidence->summary() != incidence->summary();
-    const bool mDescriptionChanged = mIncidence->description() != incidence->description();
-    const bool mDtEndChanged = mIncidence->type() == KCalendarCore::IncidenceBase::TypeEvent
-        && incidence->type() == KCalendarCore::IncidenceBase::TypeEvent
-        && mIncidence.staticCast<KCalendarCore::Event>()->dtEnd() != incidence.staticCast<KCalendarCore::Event>()->dtEnd();
-    const bool mLocationChanged = mIncidence->location() != incidence->location();
-    const bool mSecrecyChanged = mIncidence->secrecy() != incidence->secrecy();
-    const bool mStatusChanged = mIncidence->status() != incidence->status();
-    const bool mDtStartChanged = mIncidence->dtStart() != incidence->dtStart();
-
-    mIncidence = incidence;
-    mCalendarUid = notebook->uid;
-    mReadOnly = notebook->readOnly;
-
-    CalendarEvent::Recur oldRecur = mRecur;
-    mRecur = CalendarUtils::convertRecurrence(mIncidence);
-
-    int oldReminder = mReminder;
-    mReminder = CalendarUtils::getReminder(mIncidence);
-
-    QDateTime oldReminderDateTime = mReminderDateTime;
-    mReminderDateTime = CalendarUtils::getReminderDateTime(mIncidence);
-
-    CalendarEvent::SyncFailure oldSyncFailure = mSyncFailure;
-    mSyncFailure = CalendarUtils::convertSyncFailure(mIncidence);
-
-    CalendarEvent::Response oldOwnerStatus = mOwnerStatus;
-    bool oldRSVP = mRSVP;
-    mRSVP = CalendarUtils::getResponse(mIncidence, notebook->emailAddress, &mOwnerStatus);
-
-    bool oldExternalInvitation = mExternalInvitation;
-    mExternalInvitation = CalendarUtils::getExternalInvitation(mIncidence->organizer().email(), *notebook);
-
-    if (mAllDayChanged)
-        emit allDayChanged();
-
-    if (mSummaryChanged)
-        emit displayLabelChanged();
-
-    if (mDescriptionChanged)
-        emit descriptionChanged();
-
-    if (mDtStartChanged)
-        emit startTimeChanged();
-
-    if (mDtEndChanged)
-        emit endTimeChanged();
-
-    if (mLocationChanged)
-        emit locationChanged();
-
-    if (mSecrecyChanged)
-        emit secrecyChanged();
-
-    if (mStatusChanged)
-        emit statusChanged();
-
-    if (mRecur != oldRecur)
-        emit recurChanged();
-
-    if (mReminder != oldReminder)
-        emit reminderChanged();
-
-    if (mReminderDateTime != oldReminderDateTime)
-        emit reminderDateTimeChanged();
-
-    if (mSyncFailure != oldSyncFailure)
-        emit syncFailureChanged();
-
-    if (mRSVP != oldRSVP)
-        emit rsvpChanged();
-
-    if (mOwnerStatus != oldOwnerStatus)
-        emit ownerStatusChanged();
-
-    if (mExternalInvitation != oldExternalInvitation)
-        emit externalInvitationChanged();
+    mRecur = CalendarUtils::convertRecurrence(mIncidence.data);
+    mRecurWeeklyDays = CalendarUtils::convertDayPositions(mIncidence.data);
+    mRecurEndDate = QDate();
+    if (mIncidence.data->recurs()) {
+        KCalendarCore::RecurrenceRule *defaultRule = mIncidence.data->recurrence()->defaultRRule();
+        if (defaultRule) {
+            mRecurEndDate = defaultRule->endDt().date();
+        }
+    }
+    mReminder = CalendarUtils::getReminder(mIncidence.data);
+    mReminderDateTime = CalendarUtils::getReminderDateTime(mIncidence.data);
+    mSyncFailure = CalendarUtils::convertSyncFailure(mIncidence.data);
 }
 
 QString CalendarEvent::displayLabel() const
 {
-    return mIncidence->summary();
+    return mIncidence.data->summary();
 }
 
 QString CalendarEvent::description() const
 {
-    return mIncidence->description();
+    return mIncidence.data->description();
 }
 
 QDateTime CalendarEvent::startTime() const
@@ -154,14 +95,14 @@ QDateTime CalendarEvent::startTime() const
     // will be in UTC also and the UI will convert it to local when displaying
     // the time, while in every other case, it set the QDateTime in
     // local zone.
-    const QDateTime dt = mIncidence->dtStart();
+    const QDateTime dt = mIncidence.data->dtStart();
     return QDateTime(dt.date(), dt.time());
 }
 
 QDateTime CalendarEvent::endTime() const
 {
-    if (mIncidence->type() == KCalendarCore::IncidenceBase::TypeEvent) {
-        const QDateTime dt = mIncidence.staticCast<KCalendarCore::Event>()->dtEnd();
+    if (mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent) {
+        const QDateTime dt = mIncidence.data.staticCast<KCalendarCore::Event>()->dtEnd();
         return QDateTime(dt.date(), dt.time());
     }
     return QDateTime();
@@ -178,29 +119,29 @@ static Qt::TimeSpec toTimeSpec(const QDateTime &dt)
 
 Qt::TimeSpec CalendarEvent::startTimeSpec() const
 {
-    return toTimeSpec(mIncidence->dtStart());
+    return toTimeSpec(mIncidence.data->dtStart());
 }
 
 Qt::TimeSpec CalendarEvent::endTimeSpec() const
 {
-    return mIncidence->type() == KCalendarCore::IncidenceBase::TypeEvent
-        ? toTimeSpec(mIncidence.staticCast<KCalendarCore::Event>()->dtEnd()) : Qt::LocalTime;
+    return mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+        ? toTimeSpec(mIncidence.data.staticCast<KCalendarCore::Event>()->dtEnd()) : Qt::LocalTime;
 }
 
 QString CalendarEvent::startTimeZone() const
 {
-    return QString::fromLatin1(mIncidence->dtStart().timeZone().id());
+    return QString::fromLatin1(mIncidence.data->dtStart().timeZone().id());
 }
 
 QString CalendarEvent::endTimeZone() const
 {
-    return mIncidence->type() == KCalendarCore::IncidenceBase::TypeEvent
-        ? QString::fromLatin1(mIncidence.staticCast<KCalendarCore::Event>()->dtEnd().timeZone().id()) : QString();
+    return mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+        ? QString::fromLatin1(mIncidence.data.staticCast<KCalendarCore::Event>()->dtEnd().timeZone().id()) : QString();
 }
 
 bool CalendarEvent::allDay() const
 {
-    return mIncidence->allDay();
+    return mIncidence.data->allDay();
 }
 
 CalendarEvent::Recur CalendarEvent::recur() const
@@ -210,22 +151,17 @@ CalendarEvent::Recur CalendarEvent::recur() const
 
 QDateTime CalendarEvent::recurEndDate() const
 {
-    KCalendarCore::RecurrenceRule *defaultRule = mIncidence->recurrence()->defaultRRule();
-    if (defaultRule) {
-        return QDateTime(defaultRule->endDt().date());
-    } else {
-        return QDateTime();
-    }
+    return QDateTime(mRecurEndDate);
 }
 
 bool CalendarEvent::hasRecurEndDate() const
 {
-    return recurEndDate().isValid();
+    return mRecurEndDate.isValid();
 }
 
 CalendarEvent::Days CalendarEvent::recurWeeklyDays() const
 {
-    return CalendarUtils::convertDayPositions(mIncidence);
+    return mRecurWeeklyDays;
 }
 
 int CalendarEvent::reminder() const
@@ -240,12 +176,12 @@ QDateTime CalendarEvent::reminderDateTime() const
 
 QString CalendarEvent::uniqueId() const
 {
-    return mIncidence->uid();
+    return mIncidence.data->uid();
 }
 
 QString CalendarEvent::color() const
 {
-    return mManager->getNotebookColor(mCalendarUid);
+    return mNotebookColor;
 }
 
 bool CalendarEvent::readOnly() const
@@ -255,22 +191,22 @@ bool CalendarEvent::readOnly() const
 
 QString CalendarEvent::calendarUid() const
 {
-    return mCalendarUid;
+    return mIncidence.notebookUid;
 }
 
 QString CalendarEvent::location() const
 {
-    return mIncidence->location();
+    return mIncidence.data->location();
 }
 
 CalendarEvent::Secrecy CalendarEvent::secrecy() const
 {
-    return CalendarUtils::convertSecrecy(mIncidence);
+    return CalendarUtils::convertSecrecy(mIncidence.data);
 }
 
 CalendarEvent::Status CalendarEvent::status() const
 {
-    return CalendarUtils::convertStatus(mIncidence);
+    return CalendarUtils::convertStatus(mIncidence.data);
 }
 
 CalendarEvent::SyncFailure CalendarEvent::syncFailure() const
@@ -293,40 +229,126 @@ bool CalendarEvent::externalInvitation() const
     return mExternalInvitation;
 }
 
-bool CalendarEvent::sendResponse(int response)
-{
-    return mManager->sendResponse(CalendarData::Incidence{mIncidence, mCalendarUid}, (Response)response);
-}
-
-void CalendarEvent::deleteEvent()
-{
-    mManager->deleteEvent(mIncidence->uid(), mIncidence->recurrenceId(), QDateTime());
-    mManager->save();
-}
-
 QDateTime CalendarEvent::recurrenceId() const
 {
-    return mIncidence->recurrenceId();
+    return mIncidence.data->recurrenceId();
 }
 
 QString CalendarEvent::recurrenceIdString() const
 {
-    if (mIncidence->hasRecurrenceId()) {
-        return CalendarUtils::recurrenceIdToString(mIncidence->recurrenceId());
+    if (mIncidence.data->hasRecurrenceId()) {
+        return CalendarUtils::recurrenceIdToString(mIncidence.data->recurrenceId());
     } else {
         return QString();
     }
 }
 
-// Returns the event as a iCalendar string
-QString CalendarEvent::iCalendar(const QString &prodId) const
+CalendarManagedEvent::CalendarManagedEvent(CalendarManager *manager, const CalendarData::Incidence &incidence)
+    : CalendarEvent(manager)
+    , mManager(manager)
 {
-    return mManager->convertEventToICalendarSync(mIncidence->uid(), prodId);
+    connect(mManager, &CalendarManager::notebookColorChanged,
+            this, &CalendarManagedEvent::notebookColorChanged);
+    // connect(mManager, SIGNAL(eventUidChanged(QString,QString)),
+    //         this, SLOT(eventUidChanged(QString,QString)));
+    if (!incidence.data->uid().isEmpty())
+        setIncidence(incidence);
 }
 
-void CalendarEvent::notebookColorChanged(QString notebookUid)
+CalendarManagedEvent::~CalendarManagedEvent()
 {
-    if (mCalendarUid == notebookUid)
+}
+
+void CalendarManagedEvent::setIncidence(const CalendarData::Incidence &incidence)
+{
+    CalendarEvent::Recur oldRecur = mRecur;
+    CalendarEvent::Days oldDays = mRecurWeeklyDays;
+    int oldReminder = mReminder;
+    QDateTime oldReminderDateTime = mReminderDateTime;
+    CalendarEvent::SyncFailure oldSyncFailure = mSyncFailure;
+
+    const bool mAllDayChanged = mIncidence.data->allDay() != incidence.data->allDay();
+    const bool mSummaryChanged = mIncidence.data->summary() != incidence.data->summary();
+    const bool mDescriptionChanged = mIncidence.data->description() != incidence.data->description();
+    const bool mDtEndChanged = mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+        && incidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+        && mIncidence.data.staticCast<KCalendarCore::Event>()->dtEnd() != incidence.data.staticCast<KCalendarCore::Event>()->dtEnd();
+    const bool mLocationChanged = mIncidence.data->location() != incidence.data->location();
+    const bool mSecrecyChanged = mIncidence.data->secrecy() != incidence.data->secrecy();
+    const bool mStatusChanged = mIncidence.data->status() != incidence.data->status();
+    const bool mDtStartChanged = mIncidence.data->dtStart() != incidence.data->dtStart();
+    const CalendarData::Notebook &notebook = mManager->notebook(incidence.notebookUid);
+    const bool mNbColorChanged = notebook.color != mNotebookColor;
+
+    mReadOnly = notebook.readOnly;
+    mNotebookColor = notebook.color;
+
+    CalendarEvent::Response oldOwnerStatus = mOwnerStatus;
+    bool oldRSVP = mRSVP;
+    mRSVP = CalendarUtils::getResponse(mIncidence.data, notebook.emailAddress, &mOwnerStatus);
+
+    bool oldExternalInvitation = mExternalInvitation;
+    mExternalInvitation = CalendarUtils::getExternalInvitation(mIncidence.data->organizer().email(), notebook);
+
+    mIncidence = incidence;
+    cacheIncidence();
+
+    if (mAllDayChanged)
+        emit allDayChanged();
+    if (mSummaryChanged)
+        emit displayLabelChanged();
+    if (mDescriptionChanged)
+        emit descriptionChanged();
+    if (mDtStartChanged)
+        emit startTimeChanged();
+    if (mDtEndChanged)
+        emit endTimeChanged();
+    if (mLocationChanged)
+        emit locationChanged();
+    if (mSecrecyChanged)
+        emit secrecyChanged();
+    if (mStatusChanged)
+        emit statusChanged();
+    if (mRecur != oldRecur)
+        emit recurChanged();
+    if (mRecurWeeklyDays != oldDays)
+        emit recurWeeklyDaysChanged();
+    if (mReminder != oldReminder)
+        emit reminderChanged();
+    if (mReminderDateTime != oldReminderDateTime)
+        emit reminderDateTimeChanged();
+    if (mSyncFailure != oldSyncFailure)
+        emit syncFailureChanged();
+    if (mRSVP != oldRSVP)
+        emit rsvpChanged();
+    if (mOwnerStatus != oldOwnerStatus)
+        emit ownerStatusChanged();
+    if (mExternalInvitation != oldExternalInvitation)
+        emit externalInvitationChanged();
+    if (mNbColorChanged)
+        emit colorChanged();
+}
+
+bool CalendarManagedEvent::sendResponse(int response)
+{
+    return mManager->sendResponse(mIncidence, (Response)response);
+}
+
+void CalendarManagedEvent::deleteEvent()
+{
+    mManager->deleteEvent(mIncidence.data->uid(), mIncidence.data->recurrenceId(), QDateTime());
+    mManager->save();
+}
+
+// Returns the event as a iCalendar string
+QString CalendarManagedEvent::iCalendar(const QString &prodId) const
+{
+    return mManager->convertEventToICalendarSync(mIncidence.data->uid(), prodId);
+}
+
+void CalendarManagedEvent::notebookColorChanged(QString notebookUid)
+{
+    if (mIncidence.notebookUid == notebookUid)
         emit colorChanged();
 }
 

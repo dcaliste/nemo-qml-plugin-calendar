@@ -41,8 +41,6 @@
 #include <KCalendarCore/Attendee>
 #include <KCalendarCore/Incidence>
 
-#include "calendarevent.h"
-
 namespace CalendarData {
 
 struct EventOccurrence {
@@ -61,40 +59,6 @@ struct EventOccurrence {
 struct Incidence {
     KCalendarCore::Incidence::Ptr data;
     QString notebookUid;
-};
-
-struct Event {
-    QString displayLabel;
-    QString description;
-    QDateTime startTime;
-    QDateTime endTime;
-    bool allDay = false;
-    bool readOnly = false;
-    bool rsvp = false;
-    bool externalInvitation = false;
-    CalendarEvent::Recur recur;
-    QDate recurEndDate;
-    CalendarEvent::Days recurWeeklyDays;
-    int reminder; // seconds; 15 minutes before event = +900, at time of event = 0, no reminder = negative value.
-    QDateTime reminderDateTime; // Valid when reminder is at a given date and time.
-    QString uniqueId;
-    QDateTime recurrenceId;
-    QString location;
-    CalendarEvent::Secrecy secrecy;
-    QString calendarUid;
-    CalendarEvent::Response ownerStatus = CalendarEvent::ResponseUnspecified;
-    CalendarEvent::Status status = CalendarEvent::StatusNone;
-    CalendarEvent::SyncFailure syncFailure = CalendarEvent::NoSyncFailure;
-
-    bool operator==(const Event& other) const
-    {
-        return uniqueId == other.uniqueId;
-    }
-
-    bool isValid() const
-    {
-        return !uniqueId.isEmpty();
-    }
 };
 
 struct Notebook {

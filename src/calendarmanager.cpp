@@ -53,7 +53,6 @@ CalendarManager::CalendarManager()
     qRegisterMetaType<QList<QDateTime> >("QList<QDateTime>");
     qRegisterMetaType<CalendarEvent::Recur>("CalendarEvent::Recur");
     qRegisterMetaType<QHash<QString,CalendarData::EventOccurrence> >("QHash<QString,CalendarData::EventOccurrence>");
-    qRegisterMetaType<CalendarData::Event>("CalendarData::Event");
     qRegisterMetaType<QMultiHash<QString,CalendarData::Incidence> >("QMultiHash<QString,CalendarData::Incidence>");
     qRegisterMetaType<QHash<QDate,QStringList> >("QHash<QDate,QStringList>");
     qRegisterMetaType<CalendarData::Range>("CalendarData::Range");
@@ -123,6 +122,11 @@ QList<CalendarData::Notebook> CalendarManager::notebooks()
     return mNotebooks.values();
 }
 
+CalendarData::Notebook CalendarManager::notebook(const QString &notebookUid) const
+{
+    return mNotebooks.value(notebookUid);
+}
+
 QString CalendarManager::defaultNotebook() const
 {
     foreach (const CalendarData::Notebook &notebook, mNotebooks) {
@@ -138,9 +142,9 @@ void CalendarManager::setDefaultNotebook(const QString &notebookUid)
                               Q_ARG(QString, notebookUid));
 }
 
-CalendarEvent* CalendarManager::findEventObject(const QString &eventUid, const QDateTime &recurrenceId)
+CalendarManagedEvent* CalendarManager::findEventObject(const QString &eventUid, const QDateTime &recurrenceId)
 {
-    QMultiHash<QString, CalendarEvent *>::iterator it = mEventObjects.find(eventUid);
+    QMultiHash<QString, CalendarManagedEvent *>::iterator it = mEventObjects.find(eventUid);
     while (it != mEventObjects.end() && it.key() == eventUid) {
         if ((*it)->recurrenceId() == recurrenceId) {
             return *it;
@@ -150,15 +154,14 @@ CalendarEvent* CalendarManager::findEventObject(const QString &eventUid, const Q
     return nullptr;
 }
 
-CalendarEvent* CalendarManager::eventObject(const QString &eventUid, const QDateTime &recurrenceId)
+CalendarManagedEvent* CalendarManager::eventObject(const QString &eventUid, const QDateTime &recurrenceId)
 {
-    if (CalendarEvent* obj = findEventObject(eventUid, recurrenceId))
+    if (CalendarManagedEvent* obj = findEventObject(eventUid, recurrenceId))
         return obj;
     
     const CalendarData::Incidence &event = getIncidence(eventUid, recurrenceId);
     if (event.data) {
-        const CalendarData::Notebook &notebook = mNotebooks.value(event.notebookUid);
-        CalendarEvent *calendarEvent = new CalendarEvent(this, event.data, &notebook);
+        CalendarManagedEvent *calendarEvent = new CalendarManagedEvent(this, event);
         mEventObjects.insert(eventUid, calendarEvent);
         return calendarEvent;
     }
@@ -166,27 +169,19 @@ CalendarEvent* CalendarManager::eventObject(const QString &eventUid, const QDate
     // TODO: maybe attempt to read event from DB? This situation should not happen.
     qWarning() << Q_FUNC_INFO << "No event with uid" << eventUid << recurrenceId << ", returning empty event";
 
-    const CalendarData::Notebook &notebook = mNotebooks.value(defaultNotebook());
-    return new CalendarEvent(this, KCalendarCore::Incidence::Ptr(new KCalendarCore::Event()), &notebook);
+    return new CalendarManagedEvent(this, CalendarData::Incidence{KCalendarCore::Incidence::Ptr(new KCalendarCore::Event()), defaultNotebook()});
 }
 
-void CalendarManager::saveModification(const CalendarData::Incidence &eventData, bool updateAttendees,
-                                       const QList<CalendarData::EmailContact> &required,
-                                       const QList<CalendarData::EmailContact> &optional)
+void CalendarManager::saveModification(const CalendarData::Incidence &eventData)
 {
     QMetaObject::invokeMethod(mCalendarWorker, "saveEvent", Qt::QueuedConnection,
-                              Q_ARG(CalendarData::Incidence, eventData),
-                              Q_ARG(bool, updateAttendees),
-                              Q_ARG(QList<CalendarData::EmailContact>, required),
-                              Q_ARG(QList<CalendarData::EmailContact>, optional));
+                              Q_ARG(CalendarData::Incidence, eventData));
 }
 
 // caller owns returned object
 CalendarChangeInformation *
-CalendarManager::replaceOccurrence(const CalendarData::Incidence &eventData, CalendarEventOccurrence *occurrence,
-                                   bool updateAttendees,
-                                   const QList<CalendarData::EmailContact> &required,
-                                   const QList<CalendarData::EmailContact> &optional)
+CalendarManager::replaceOccurrence(const CalendarData::Incidence &eventData,
+                                   CalendarEventOccurrence *occurrence)
 {
     if (!occurrence) {
         qWarning() << Q_FUNC_INFO << "no occurrence given";
@@ -205,10 +200,7 @@ CalendarManager::replaceOccurrence(const CalendarData::Incidence &eventData, Cal
 
     QMetaObject::invokeMethod(mCalendarWorker, "replaceOccurrence", Qt::QueuedConnection,
                               Q_ARG(CalendarData::Incidence, eventData),
-                              Q_ARG(QDateTime, occurrence->startTime()),
-                              Q_ARG(bool, updateAttendees),
-                              Q_ARG(QList<CalendarData::EmailContact>, required),
-                              Q_ARG(QList<CalendarData::EmailContact>, optional));
+                              Q_ARG(QDateTime, occurrence->startTime()));
     return changes;
 }
 
@@ -245,10 +237,12 @@ void CalendarManager::setNotebookColor(const QString &notebookUid, const QString
 
 QString CalendarManager::getNotebookColor(const QString &notebookUid) const
 {
-    if (mNotebooks.contains(notebookUid))
-        return mNotebooks.value(notebookUid, CalendarData::Notebook()).color;
-    else
-        return QString();
+    return mNotebooks.value(notebookUid).color;
+}
+
+QString CalendarManager::getNotebookEmail(const QString &notebookUid) const
+{
+    return mNotebooks.value(notebookUid).emailAddress;
 }
 
 void CalendarManager::cancelAgendaRefresh(CalendarAgendaModel *model)
@@ -553,7 +547,7 @@ void CalendarManager::occurrenceExceptionCreatedSlot(const CalendarData::Inciden
         const OccurrenceData &item = mPendingOccurrenceExceptions.at(i);
         if (item.event.data == data.data && item.occurrenceTime == occurrence) {
             if (item.changeObject) {
-                item.changeObject->setInformation(data.uniqueId, newRecurrenceId);
+                item.changeObject->setInformation(data.data->uid(), newRecurrenceId);
             }
 
             mPendingOccurrenceExceptions.removeAt(i);
@@ -592,38 +586,6 @@ QString CalendarManager::convertEventToICalendarSync(const QString &uid, const Q
     return vEvent;
 }
 
-CalendarData::Event CalendarManager::createEventStruct(const CalendarData::Incidence &e) const
-{
-    const CalendarData::Notebook &notebook(mNotebooks.value(e.notebookUid));
-    CalendarData::Event event;
-    event.uniqueId = e.data->uid();
-    event.recurrenceId = e.data->recurrenceId();
-    event.allDay = e.data->allDay();
-    event.calendarUid = notebook.uid;
-    event.description = e.data->description();
-    event.displayLabel = e.data->summary();
-    if (e.data->type() == KCalendarCore::IncidenceBase::TypeEvent)
-        event.endTime = e.data.staticCast<KCalendarCore::Event>()->dtEnd();
-    event.location = e.data->location();
-    event.secrecy = CalendarUtils::convertSecrecy(e.data);
-    event.readOnly = notebook.readOnly;
-    event.recur = CalendarUtils::convertRecurrence(e.data);
-    event.recurWeeklyDays = CalendarUtils::convertDayPositions(e.data);
-    event.status = CalendarUtils::convertStatus(e.data);
-    event.syncFailure = CalendarUtils::convertSyncFailure(e.data);
-    event.externalInvitation = CalendarUtils::getExternalInvitation(e.data->organizer().email(), notebook);
-    event.rsvp = CalendarUtils::getResponse(e.data, notebook.emailAddress, &event.ownerStatus);
-
-    KCalendarCore::RecurrenceRule *defaultRule = e.data->recurrence()->defaultRRule();
-    if (defaultRule) {
-        event.recurEndDate = defaultRule->endDt().date();
-    }
-    event.reminder = CalendarUtils::getReminder(e.data);
-    event.reminderDateTime = CalendarUtils::getReminderDateTime(e.data);
-    event.startTime = e.data->dtStart();
-    return event;
-}
-
 CalendarData::Incidence CalendarManager::getIncidence(const QString &uid, const QDateTime &recurrenceId) const
 {
     QMultiHash<QString, CalendarData::Incidence>::ConstIterator it = mEvents.find(uid);
@@ -635,16 +597,6 @@ CalendarData::Incidence CalendarManager::getIncidence(const QString &uid, const 
     }
 
     return CalendarData::Incidence();
-}
-
-CalendarData::Event CalendarManager::getEvent(const QString &uid, const QDateTime &recurrenceId)
-{
-    const CalendarData::Incidence &event = getIncidence(uid, recurrenceId);
-    if (event.data) {
-        return createEventStruct(event);
-    }
-
-    return CalendarData::Event();
 }
 
 CalendarData::Incidence CalendarManager::getIncidence(const QString &instanceIdentifier, bool *loaded) const
@@ -700,9 +652,7 @@ void CalendarManager::findMatchingEventFinished(const QString &invitationFile, c
     QHash<CalendarInvitationQuery*, QString>::iterator it = mInvitationQueryHash.begin();
     while (it != mInvitationQueryHash.end()) {
         if (it.value() == invitationFile) {
-            CalendarData::Event e = createEventStruct(event);
-            e.externalInvitation = true;
-            it.key()->queryResult(e);
+            it.key()->queryResult(event);
             it = mInvitationQueryHash.erase(it);
         } else {
             it++;
@@ -874,13 +824,11 @@ void CalendarManager::dataLoadedSlot(const QList<CalendarData::Range> &ranges,
     mLoadPending = false;
 
     for (const CalendarData::Incidence &oldEvent : oldEvents) {
-        CalendarEvent *eventObject = findEventObject(oldEvent.data->uid(), oldEvent.data->recurrenceId());
+        CalendarManagedEvent *eventObject = findEventObject(oldEvent.data->uid(), oldEvent.data->recurrenceId());
         if (eventObject) {
             const CalendarData::Incidence &event = getIncidence(oldEvent.data->uid(), oldEvent.data->recurrenceId());
-            if (event.data) {
-                const CalendarData::Notebook &notebook = mNotebooks.value(event.notebookUid);
-                eventObject->setIncidence(event.data, &notebook);
-            }
+            if (event.data)
+                eventObject->setIncidence(event);
         }
     }
 

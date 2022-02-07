@@ -36,12 +36,7 @@
 #include <QObject>
 #include <QDateTime>
 
-#include <KCalendarCore/Incidence>
-
-class CalendarManager;
-namespace CalendarData {
-    struct Notebook;
-}
+#include "calendardata.h"
 
 class CalendarEvent : public QObject
 {
@@ -135,11 +130,11 @@ public:
     };
     Q_ENUM(Status)
 
-    CalendarEvent(CalendarManager *manager, KCalendarCore::Incidence::Ptr incidence,
-                  const CalendarData::Notebook *notebook);
+    CalendarEvent(QObject *parent);
+    CalendarEvent(KCalendarCore::Incidence::Ptr incidence, QObject *parent);
+    CalendarEvent(const CalendarData::Incidence &incidence, QObject *parent);
     ~CalendarEvent();
 
-    void setIncidence(KCalendarCore::Incidence::Ptr incidence, const CalendarData::Notebook *notebook);
     QString displayLabel() const;
     QString description() const;
     QDateTime startTime() const;
@@ -169,14 +164,6 @@ public:
     bool rsvp() const;
     bool externalInvitation() const;
 
-    Q_INVOKABLE bool sendResponse(int response);
-    Q_INVOKABLE QString iCalendar(const QString &prodId = QString()) const;
-    Q_INVOKABLE void deleteEvent();
-
-private slots:
-    void notebookColorChanged(QString notebookUid);
-    // void eventUidChanged(QString oldUid, QString newUid);
-
 signals:
     void displayLabelChanged();
     void descriptionChanged();
@@ -200,19 +187,44 @@ signals:
     void rsvpChanged();
     void externalInvitationChanged();
 
+protected:
+    void cacheIncidence();
+
+    CalendarData::Incidence mIncidence;
+    // Cached values, requiring a processing from mIncidence.
+    Recur mRecur = RecurOnce;
+    Days mRecurWeeklyDays = NoDays;
+    QDate mRecurEndDate;
+    int mReminder = -1;
+    QDateTime mReminderDateTime;
+    SyncFailure mSyncFailure = NoSyncFailure;
+    bool mReadOnly = false;
+    bool mRSVP = false;
+    bool mExternalInvitation = false;
+    Response mOwnerStatus = ResponseUnspecified;
+    QString mNotebookColor;
+};
+
+class CalendarManager;
+class CalendarManagedEvent : public CalendarEvent
+{
+    Q_OBJECT
+public:
+    CalendarManagedEvent(CalendarManager *manager, const CalendarData::Incidence &incidence);
+    ~CalendarManagedEvent();
+
+    void setIncidence(const CalendarData::Incidence &incidence);
+
+    Q_INVOKABLE bool sendResponse(int response);
+    Q_INVOKABLE QString iCalendar(const QString &prodId = QString()) const;
+    Q_INVOKABLE void deleteEvent();
+
+private slots:
+    void notebookColorChanged(QString notebookUid);
+    // void eventUidChanged(QString oldUid, QString newUid);
+
 private:
     CalendarManager *mManager;
-    KCalendarCore::Incidence::Ptr mIncidence;
-    QString mCalendarUid;
-    // Cached values, requiring a processing from mIncidence.
-    Recur mRecur;
-    int mReminder;
-    QDateTime mReminderDateTime;
-    SyncFailure mSyncFailure;
-    bool mReadOnly;
-    bool mRSVP;
-    bool mExternalInvitation;
-    Response mOwnerStatus;
 };
 
 #endif // CALENDAREVENT_H

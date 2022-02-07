@@ -179,11 +179,11 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
         CalendarEvent::Recur recur = event.data ? CalendarUtils::convertRecurrence(event.data) : CalendarEvent::RecurOnce;
         if (!event.data 
             || mEvent.data->allDay() != event.data->allDay()
-                || (mEvent.data->type() == KCalendarCore::IncidenceBase::TypeEvent
-                    && mEvent.data.staticCast<KCalendarCore::Event>()->dtEnd() != event.data.staticCast<KCalendarCore::Event>()->dtEnd())
-                || CalendarUtils::convertRecurrence(mEvent.data) != recur
-                || recur == CalendarEvent::RecurCustom
-                || mEvent.data->dtStart() != event.data->dtStart()) {
+            || (mEvent.data->type() == KCalendarCore::IncidenceBase::TypeEvent
+                && mEvent.data.staticCast<KCalendarCore::Event>()->dtEnd() != event.data.staticCast<KCalendarCore::Event>()->dtEnd())
+            || CalendarUtils::convertRecurrence(mEvent.data) != recur
+            || recur == CalendarEvent::RecurCustom
+            || mEvent.data->dtStart() != event.data->dtStart()) {
             mEvent = event;
             updateOccurrence = true;
         }

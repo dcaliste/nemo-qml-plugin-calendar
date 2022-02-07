@@ -123,31 +123,31 @@ void CalendarInvitationQuery::query()
     }
 }
 
-void CalendarInvitationQuery::queryResult(CalendarData::Event event)
+void CalendarInvitationQuery::queryResult(const CalendarData::Incidence &event)
 {
     bool needNUidEmit = false;
     bool needUidEmit = false;
     bool needRidEmit = false;
     bool needSTEmit = false;
 
-    if (mNotebookUid != event.calendarUid) {
-        mNotebookUid = event.calendarUid;
+    if (mNotebookUid != event.notebookUid) {
+        mNotebookUid = event.notebookUid;
         needNUidEmit = true;
     }
 
-    if (mUid != event.uniqueId) {
-        mUid = event.uniqueId;
+    if (mUid != event.data->uid()) {
+        mUid = event.data->uid();
         needUidEmit = true;
     }
 
-    const QString &recurrenceIdString = CalendarUtils::recurrenceIdToString(event.recurrenceId);
+    const QString &recurrenceIdString = CalendarUtils::recurrenceIdToString(event.data->recurrenceId());
     if (mRid != recurrenceIdString) {
         mRid = recurrenceIdString;
         needRidEmit = true;
     }
 
-    if (mStartTime != event.startTime.toString(Qt::ISODate)) {
-        mStartTime = event.startTime.toString(Qt::ISODate);
+    if (mStartTime != event.data->dtStart().toString(Qt::ISODate)) {
+        mStartTime = event.data->dtStart().toString(Qt::ISODate);
         needSTEmit = true;
     }
 

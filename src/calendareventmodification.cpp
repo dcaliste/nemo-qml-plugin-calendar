@@ -57,29 +57,14 @@ void updateTime(QDateTime *dt, Qt::TimeSpec spec, const QString &timeZone)
 }
 
 CalendarEventModification::CalendarEventModification(CalendarData::Incidence data, QObject *parent)
-    : QObject(parent)
-    , m_event(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(data.data->clone()), data.notebookUid})
+    : CalendarEvent(data, parent)
     , m_attendeesSet(false)
 {
-    m_recur = CalendarUtils::convertRecurrence(m_event.data);
-    m_recurWeeklyDays = CalendarUtils::convertDayPositions(m_event.data);
-    m_reminder = CalendarUtils::getReminder(m_event.data);
-    m_reminderDateTime = CalendarUtils::getReminderDateTime(m_event.data);
-    if (m_event.data->recurs()) {
-        KCalendarCore::RecurrenceRule *defaultRule = m_event.data->recurrence()->defaultRRule();
-        if (defaultRule) {
-            m_recurEndDate = defaultRule->endDt().date();
-        }
-    }
 }
 
 CalendarEventModification::CalendarEventModification(QObject *parent)
-    : QObject(parent)
-    , m_event(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(new KCalendarCore::Event), QString()})
+    : CalendarEvent(parent)
     , m_attendeesSet(false)
-    , m_recur(CalendarEvent::RecurOnce)
-    , m_recurWeeklyDays(CalendarEvent::NoDays)
-    , m_reminder(-1)
 {
 }
 
@@ -87,105 +72,67 @@ CalendarEventModification::~CalendarEventModification()
 {
 }
 
-QString CalendarEventModification::displayLabel() const
-{
-    return m_event.data->summary();
-}
-
 void CalendarEventModification::setDisplayLabel(const QString &displayLabel)
 {
-    if (m_event.data->summary() != displayLabel) {
-        m_event.data->setSummary(displayLabel);
+    mIncidence.data->resetDirtyFields();
+    mIncidence.data->setSummary(displayLabel);
+    if (mIncidence.data->dirtyFields().contains(KCalendarCore::IncidenceBase::FieldSummary))
         emit displayLabelChanged();
-    }
-}
-
-QString CalendarEventModification::description() const
-{
-    return m_event.data->description();
 }
 
 void CalendarEventModification::setDescription(const QString &description)
 {
-    if (m_event.data->description() != description) {
-        m_event.data->setDescription(description);
+    mIncidence.data->resetDirtyFields();
+    mIncidence.data->setDescription(description);
+    if (mIncidence.data->dirtyFields().contains(KCalendarCore::IncidenceBase::FieldDescription))
         emit descriptionChanged();
-    }
 }
 
 QDateTime CalendarEventModification::startTime() const
 {
-    return m_event.data->dtStart();
+    return mIncidence.data->dtStart();
 }
 
 void CalendarEventModification::setStartTime(const QDateTime &startTime, Qt::TimeSpec spec, const QString &timezone)
 {
+    mIncidence.data->resetDirtyFields();
     QDateTime newStartTimeInTz = startTime;
     updateTime(&newStartTimeInTz, spec, timezone);
-    if (m_event.data->dtStart() != newStartTimeInTz
-        || m_event.data->dtStart().timeSpec() != newStartTimeInTz.timeSpec()
-        || (m_event.data->dtStart().timeSpec() == Qt::TimeZone
-            && m_event.data->dtStart().timeZone() != newStartTimeInTz.timeZone())) {
-        m_event.data->setDtStart(newStartTimeInTz);
+    mIncidence.data->setDtStart(newStartTimeInTz);
+    if (mIncidence.data->dirtyFields().contains(KCalendarCore::IncidenceBase::FieldDtStart))
         emit startTimeChanged();
-    }
 }
 
 QDateTime CalendarEventModification::endTime() const
 {
-    return m_event.data->type() == KCalendarCore::IncidenceBase::TypeEvent ? m_event.data.staticCast<KCalendarCore::Event>()->dtEnd() : QDateTime();
+    return mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent ? mIncidence.data.staticCast<KCalendarCore::Event>()->dtEnd() : QDateTime();
 }
 
 void CalendarEventModification::setEndTime(const QDateTime &endTime, Qt::TimeSpec spec, const QString &timezone)
 {
+    mIncidence.data->resetDirtyFields();
     QDateTime newEndTimeInTz = endTime;
     updateTime(&newEndTimeInTz, spec, timezone);
-    const QDateTime &dtEnd = m_event.data->type() == KCalendarCore::IncidenceBase::TypeEvent ? m_event.data.staticCast<KCalendarCore::Event>()->dtEnd() : QDateTime();
-    if (dtEnd != newEndTimeInTz
-        || dtEnd.timeSpec() != newEndTimeInTz.timeSpec()
-        || (dtEnd.timeSpec() == Qt::TimeZone
-            && dtEnd.timeZone() != newEndTimeInTz.timeZone())) {
-        if (m_event.data->type() == KCalendarCore::IncidenceBase::TypeEvent) {
-            m_event.data.staticCast<KCalendarCore::Event>()->setDtEnd(newEndTimeInTz);
-            emit endTimeChanged();
-        }
-    }
-}
-
-bool CalendarEventModification::allDay() const
-{
-    return m_event.data->allDay();
+    if (mIncidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent)
+        mIncidence.data.staticCast<KCalendarCore::Event>()->setDtEnd(newEndTimeInTz);
+    if (mIncidence.data->dirtyFields().contains(KCalendarCore::IncidenceBase::FieldDtEnd))
+        emit endTimeChanged();
 }
 
 void CalendarEventModification::setAllDay(bool allDay)
 {
-    if (m_event.data->allDay() != allDay) {
-        m_event.data->setAllDay(allDay);
+    if (mIncidence.data->allDay() != allDay) {
+        mIncidence.data->setAllDay(allDay);
         emit allDayChanged();
     }
 }
 
-CalendarEvent::Recur CalendarEventModification::recur() const
-{
-    return m_recur;
-}
-
 void CalendarEventModification::setRecur(CalendarEvent::Recur recur)
 {
-    if (m_recur != recur) {
-        m_recur = recur;
+    if (mRecur != recur) {
+        mRecur = recur;
         emit recurChanged();
     }
-}
-
-QDateTime CalendarEventModification::recurEndDate() const
-{
-    return QDateTime(m_recurEndDate);
-}
-
-bool CalendarEventModification::hasRecurEndDate() const
-{
-    return m_recurEndDate.isValid();
 }
 
 void CalendarEventModification::setRecurEndDate(const QDateTime &dateTime)
@@ -193,8 +140,8 @@ void CalendarEventModification::setRecurEndDate(const QDateTime &dateTime)
     bool wasValid = hasRecurEndDate();
     QDate date = dateTime.date();
 
-    if (m_recurEndDate != date) {
-        m_recurEndDate = date;
+    if (mRecurEndDate != date) {
+        mRecurEndDate = date;
         emit recurEndDateChanged();
 
         if (date.isValid() != wasValid) {
@@ -208,76 +155,42 @@ void CalendarEventModification::unsetRecurEndDate()
     setRecurEndDate(QDateTime());
 }
 
-CalendarEvent::Days CalendarEventModification::recurWeeklyDays() const
-{
-    return m_recurWeeklyDays;
-}
-
 void CalendarEventModification::setRecurWeeklyDays(CalendarEvent::Days days)
 {
-    if (m_recurWeeklyDays != days) {
-        m_recurWeeklyDays = days;
+    if (mRecurWeeklyDays != days) {
+        mRecurWeeklyDays = days;
         emit recurWeeklyDaysChanged();
     }
 }
 
-QString CalendarEventModification::recurrenceIdString() const
-{
-    if (m_event.data->hasRecurrenceId()) {
-        return CalendarUtils::recurrenceIdToString(m_event.data->recurrenceId());
-    } else {
-        return QString();
-    }
-}
-
-int CalendarEventModification::reminder() const
-{
-    return m_reminder;
-}
-
 void CalendarEventModification::setReminder(int seconds)
 {
-    if (seconds != m_reminder) {
-        m_reminder = seconds;
+    if (seconds != mReminder) {
+        mReminder = seconds;
         emit reminderChanged();
     }
 }
 
-QDateTime CalendarEventModification::reminderDateTime() const
-{
-    return m_reminderDateTime;
-}
-
 void CalendarEventModification::setReminderDateTime(const QDateTime &dateTime)
 {
-    if (dateTime != m_reminderDateTime) {
-        m_reminderDateTime = dateTime;
+    if (dateTime != mReminderDateTime) {
+        mReminderDateTime = dateTime;
         emit reminderDateTimeChanged();
     }
 }
 
-QString CalendarEventModification::location() const
-{
-    return m_event.data->location();
-}
-
 void CalendarEventModification::setLocation(const QString &newLocation)
 {
-    if (newLocation != m_event.data->location()) {
-        m_event.data->setLocation(newLocation);
+    mIncidence.data->resetDirtyFields();
+    mIncidence.data->setLocation(newLocation);
+    if (mIncidence.data->dirtyFields().contains(KCalendarCore::IncidenceBase::FieldLocation))
         emit locationChanged();
-    }
-}
-
-QString CalendarEventModification::calendarUid() const
-{
-    return m_event.notebookUid;
 }
 
 void CalendarEventModification::setCalendarUid(const QString &uid)
 {
-    if (m_event.notebookUid != uid) {
-        m_event.notebookUid = uid;
+    if (mIncidence.notebookUid != uid) {
+        mIncidence.notebookUid = uid;
         emit calendarUidChanged();
     }
 }
@@ -294,15 +207,14 @@ void CalendarEventModification::setAttendees(CalendarContactModel *required, Cal
     m_optionalAttendees = optional->getList();
 }
 
-static void setRecurrence(KCalendarCore::Incidence::Ptr &event, CalendarEvent::Recur recur, CalendarEvent::Days days)
+static void updateRecurrence(KCalendarCore::Incidence::Ptr &event,
+                             CalendarEvent::Recur recur, CalendarEvent::Days days,
+                             const QDate &recurEndDate)
 {
     if (!event)
         return;
 
     CalendarEvent::Recur oldRecur = CalendarUtils::convertRecurrence(event);
-
-    if (recur == CalendarEvent::RecurOnce)
-        event->recurrence()->clear();
 
     if (oldRecur != recur
         || recur == CalendarEvent::RecurMonthlyByDayOfWeek
@@ -310,6 +222,7 @@ static void setRecurrence(KCalendarCore::Incidence::Ptr &event, CalendarEvent::R
         || recur == CalendarEvent::RecurWeeklyByDays) {
         switch (recur) {
         case CalendarEvent::RecurOnce:
+            event->recurrence()->clear();
             break;
         case CalendarEvent::RecurDaily:
             event->recurrence()->setDaily(1);
@@ -355,9 +268,17 @@ static void setRecurrence(KCalendarCore::Incidence::Ptr &event, CalendarEvent::R
             break;
         }
     }
+    if (recur != CalendarEvent::RecurOnce) {
+        event->recurrence()->setEndDate(recurEndDate);
+        if (!recurEndDate.isValid()) {
+            // Recurrence/RecurrenceRule don't have separate method to clear the end date, and currently
+            // setting invalid date doesn't make the duration() indicate recurring infinitely.
+            event->recurrence()->setDuration(-1);
+        }
+    }
 }
 
-static void setReminder(KCalendarCore::Incidence::Ptr &event, int seconds, const QDateTime &dateTime)
+static void updateReminder(KCalendarCore::Incidence::Ptr &event, int seconds, const QDateTime &dateTime)
 {
     if (!event)
         return;
@@ -389,27 +310,89 @@ static void setReminder(KCalendarCore::Incidence::Ptr &event, int seconds, const
     }
 }
 
-void CalendarEventModification::save()
+static void updateAttendee(KCalendarCore::Attendee::List &attendees,
+                           const CalendarData::EmailContact &contact,
+                           KCalendarCore::Attendee::Role role)
 {
-    setReminder(m_event.data, m_reminder, m_reminderDateTime);
-    setRecurrence(m_event.data, m_recur, m_recurWeeklyDays);
+    KCalendarCore::Attendee::List::Iterator it =
+        std::find_if(attendees.begin(), attendees.end(),
+                     [contact] (const KCalendarCore::Attendee &attendee)
+                     {return attendee.email() == contact.email;});
+    if (it == attendees.end()) {
+        attendees.append(KCalendarCore::Attendee
+                         (contact.name, contact.email, true /* rsvp */,
+                          KCalendarCore::Attendee::NeedsAction, role));
+    } else {
+        it->setRole(role);
+    }
+}
 
-    if (m_recur != CalendarEvent::RecurOnce) {
-        m_event.data->recurrence()->setEndDate(m_recurEndDate);
-        if (!m_recurEndDate.isValid()) {
-            // Recurrence/RecurrenceRule don't have separate method to clear the end date, and currently
-            // setting invalid date doesn't make the duration() indicate recurring infinitely.
-            m_event.data->recurrence()->setDuration(-1);
-        }
+// use explicit notebook uid so we don't need to assume the events involved being added there.
+// the related notebook is just needed to associate updates to some plugin/account
+static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
+                            const QList<CalendarData::EmailContact> &required,
+                            const QList<CalendarData::EmailContact> &optional,
+                            const QString &notebookUid)
+{
+    if (notebookUid.isEmpty()) {
+        qWarning() << "No notebook passed, refusing to send event updates from random source";
+        return;
     }
 
-    CalendarManager::instance()->saveModification(m_event, m_attendeesSet,
-                                                  m_requiredAttendees, m_optionalAttendees);
+    // set the notebook email address as the organizer email address
+    // if no explicit organizer is set (i.e. assume we are the organizer).
+    KCalendarCore::Person organizer = event->organizer();
+    if (organizer.email().isEmpty()) {
+        organizer.setEmail(CalendarManager::instance()->getNotebookEmail(notebookUid));
+        if (!organizer.email().isEmpty())
+            event->setOrganizer(organizer);
+    }
+
+    KCalendarCore::Attendee::List attendees = event->attendees();
+    KCalendarCore::Attendee::List::Iterator it = attendees.begin();
+    while (it != attendees.end()) {
+        bool remove = true;
+        remove = remove
+            && (std::find_if(required.constBegin(), required.constEnd(),
+                             [it] (const CalendarData::EmailContact &data)
+                             {return data.email == it->email();}) == required.constEnd());
+        remove = remove
+            && (std::find_if(optional.constBegin(), optional.constEnd(),
+                             [it] (const CalendarData::EmailContact &data)
+                             {return data.email == it->email();}) == optional.constEnd());
+        // if there are non-participants getting update as FYI, or chair for any reason,
+        // avoid sending them the cancel
+        remove = remove && it->role() != KCalendarCore::Attendee::ReqParticipant
+            && it->role() != KCalendarCore::Attendee::OptParticipant;
+        if (remove)
+            it = attendees.erase(it);
+        else
+            ++it;
+    }
+    for (const CalendarData::EmailContact &contact : required)
+        updateAttendee(attendees, contact, KCalendarCore::Attendee::ReqParticipant);
+    for (const CalendarData::EmailContact &contact : optional)
+        updateAttendee(attendees, contact, KCalendarCore::Attendee::OptParticipant);
+    event->setAttendees(attendees);
+}
+
+void CalendarEventModification::save()
+{
+    updateReminder(mIncidence.data, mReminder, mReminderDateTime);
+    updateRecurrence(mIncidence.data, mRecur, mRecurWeeklyDays, mRecurEndDate);
+    if (m_attendeesSet)
+        updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
+
+    CalendarManager::instance()->saveModification(mIncidence);
 }
 
 CalendarChangeInformation *
 CalendarEventModification::replaceOccurrence(CalendarEventOccurrence *occurrence)
 {
-    return CalendarManager::instance()->replaceOccurrence(m_event, occurrence, m_attendeesSet,
-                                                          m_requiredAttendees, m_optionalAttendees);
+    updateReminder(mIncidence.data, mReminder, mReminderDateTime);
+    updateRecurrence(mIncidence.data, mRecur, mRecurWeeklyDays, mRecurEndDate);
+    if (m_attendeesSet)
+        updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
+
+    return CalendarManager::instance()->replaceOccurrence(mIncidence, occurrence);
 }

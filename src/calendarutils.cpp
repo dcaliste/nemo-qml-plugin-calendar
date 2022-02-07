@@ -227,7 +227,7 @@ QDateTime CalendarUtils::getReminderDateTime(const KCalendarCore::Incidence::Ptr
     return QDateTime();
 }
 
-QList<CalendarData::Attendee> CalendarUtils::getEventAttendees(const KCalendarCore::Event::Ptr &event)
+QList<CalendarData::Attendee> CalendarUtils::getEventAttendees(const KCalendarCore::Incidence::Ptr &event)
 {
     QList<CalendarData::Attendee> result;
     const KCalendarCore::Person calOrganizer = event->organizer();
@@ -303,13 +303,14 @@ QList<QObject *> CalendarUtils::convertAttendeeList(const QList<CalendarData::At
     return result;
 }
 
-CalendarData::EventOccurrence CalendarUtils::getNextOccurrence(const KCalendarCore::Event::Ptr &event,
+CalendarData::EventOccurrence CalendarUtils::getNextOccurrence(const KCalendarCore::Incidence::Ptr &incidence,
                                                                const QDateTime &start)
 {
     const QTimeZone systemTimeZone = QTimeZone::systemTimeZone();
 
     CalendarData::EventOccurrence occurrence;
-    if (event) {
+    if (incidence && incidence->type() == KCalendarCore::IncidenceBase::TypeEvent) {
+        KCalendarCore::Event::Ptr event = incidence.staticCast<KCalendarCore::Event>();
         QDateTime dtStart = event->dtStart().toTimeZone(systemTimeZone);
         QDateTime dtEnd = event->dtEnd().toTimeZone(systemTimeZone);
 

@@ -63,16 +63,11 @@ public:
     static CalendarManager *instance(bool createIfNeeded = true);
     ~CalendarManager();
 
-    CalendarEvent* eventObject(const QString &eventUid, const QDateTime &recurrenceId);
+    CalendarManagedEvent* eventObject(const QString &eventUid, const QDateTime &recurrenceId);
 
-    void saveModification(const CalendarData::Incidence &eventData, bool updateAttendees,
-                          const QList<CalendarData::EmailContact> &required,
-                          const QList<CalendarData::EmailContact> &optional);
+    void saveModification(const CalendarData::Incidence &eventData);
     CalendarChangeInformation * replaceOccurrence(const CalendarData::Incidence &eventData,
-                                                  CalendarEventOccurrence *occurrence,
-                                                  bool updateAttendees,
-                                                  const QList<CalendarData::EmailContact> &required,
-                                                  const QList<CalendarData::EmailContact> &optional);
+                                                  CalendarEventOccurrence *occurrence);
     void deleteEvent(const QString &uid, const QDateTime &recurrenceId, const QDateTime &dateTime);
     void deleteAll(const QString &uid);
     void save();
@@ -83,11 +78,11 @@ public:
     // Event
     CalendarData::Incidence getIncidence(const QString &uid, const QDateTime &recurrenceId) const;
     CalendarData::Incidence getIncidence(const QString &instanceIdentifier, bool *loaded) const;
-    CalendarData::Event getEvent(const QString& uid, const QDateTime &recurrenceId);
     bool sendResponse(const CalendarData::Incidence &incidence, CalendarEvent::Response response);
 
     // Notebooks
     QList<CalendarData::Notebook> notebooks();
+    CalendarData::Notebook notebook(const QString &notebookUid) const;
     QString defaultNotebook() const;
     void setDefaultNotebook(const QString &notebookUid);
     QStringList excludedNotebooks();
@@ -95,6 +90,7 @@ public:
     void excludeNotebook(const QString &notebookUid, bool exclude);
     void setNotebookColor(const QString &notebookUid, const QString &color);
     QString getNotebookColor(const QString &notebookUid) const;
+    QString getNotebookEmail(const QString &notebookUid) const;
 
     // AgendaModel
     void cancelAgendaRefresh(CalendarAgendaModel *model);
@@ -156,13 +152,12 @@ private:
     QList<CalendarData::Range> addRanges(const QList<CalendarData::Range> &oldRanges,
                                          const QList<CalendarData::Range> &newRanges);
     void updateAgendaModel(CalendarAgendaModel *model);
-    CalendarEvent* findEventObject(const QString &eventUid, const QDateTime &recurrenceId);
-    CalendarData::Event createEventStruct(const CalendarData::Incidence &e) const;
+    CalendarManagedEvent* findEventObject(const QString &eventUid, const QDateTime &recurrenceId);
 
     QThread mWorkerThread;
     CalendarWorker *mCalendarWorker;
     QMultiHash<QString, CalendarData::Incidence> mEvents;
-    QMultiHash<QString, CalendarEvent *> mEventObjects;
+    QMultiHash<QString, CalendarManagedEvent *> mEventObjects;
     QHash<QString, CalendarData::EventOccurrence> mEventOccurrences;
     QHash<QDate, QStringList> mEventOccurrenceForDates;
     QList<CalendarAgendaModel *> mAgendaRefreshList;

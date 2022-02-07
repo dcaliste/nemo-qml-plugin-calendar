@@ -33,7 +33,7 @@
 #ifndef CALENDARWORKER_H
 #define CALENDARWORKER_H
 
-#include "calendardata.h"
+#include "calendarevent.h"
 
 #include <QObject>
 #include <QHash>
@@ -63,12 +63,9 @@ public slots:
     void init();
     void save();
 
-    void saveEvent(const CalendarData::Incidence &eventData, bool updateAttendees,
-                   const QList<CalendarData::EmailContact> &required,
-                   const QList<CalendarData::EmailContact> &optional);
-    void replaceOccurrence(const CalendarData::Incidence &eventData, const QDateTime &startTime, bool updateAttendees,
-                           const QList<CalendarData::EmailContact> &required,
-                           const QList<CalendarData::EmailContact> &optional);
+    void saveEvent(const CalendarData::Incidence &eventData);
+    void replaceOccurrence(const CalendarData::Incidence &eventData,
+                           const QDateTime &startTime);
     void deleteEvent(const QString &uid, const QDateTime &recurrenceId, const QDateTime &dateTime);
     void deleteAll(const QString &uid);
     bool sendResponse(const KCalendarCore::Incidence::Ptr &event, const QString &ownerEmail,
@@ -114,18 +111,15 @@ signals:
                                    const CalendarData::Incidence &eventData);
 
 private:
-    void setEventData(KCalendarCore::Event::Ptr &event, const CalendarData::Event &eventData);
     void loadNotebooks();
     QStringList excludedNotebooks() const;
     bool saveExcludeNotebook(const QString &notebookUid, bool exclude);
 
     bool needSendCancellation(KCalendarCore::Event::Ptr &event) const;
-    void updateEventAttendees(KCalendarCore::Event::Ptr event, bool newEvent,
+    void updateEventAttendees(const KCalendarCore::Incidence::Ptr &event, bool newEvent,
                               const QList<CalendarData::EmailContact> &required,
                               const QList<CalendarData::EmailContact> &optional,
                               const QString &notebookUid);
-    QString getNotebookAddress(const QString &notebookUid) const;
-    QString getNotebookAddress(const KCalendarCore::Event::Ptr &event) const;
 
     QHash<QString, CalendarData::EventOccurrence> eventOccurrences(const QList<CalendarData::Range> &ranges) const;
     QHash<QDate, QStringList> dailyEventOccurrences(const QList<CalendarData::Range> &ranges,

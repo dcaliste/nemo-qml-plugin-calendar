@@ -39,92 +39,8 @@
 #include <QDebug>
 
 CalendarImportEvent::CalendarImportEvent(KCalendarCore::Event::Ptr event)
-    : QObject(),
-      mEvent(event),
-      mColor("#ffffff")
+    : CalendarEvent(event, nullptr)
 {
-}
-
-QString CalendarImportEvent::displayLabel() const
-{
-    if (!mEvent)
-        return QString();
-
-    return mEvent->summary();
-}
-
-QString CalendarImportEvent::description() const
-{
-    if (!mEvent)
-        return QString();
-
-    return mEvent->description();
-}
-
-QDateTime CalendarImportEvent::startTime() const
-{
-    if (!mEvent)
-        return QDateTime();
-
-    return mEvent->dtStart();
-}
-
-QDateTime CalendarImportEvent::endTime() const
-{
-    if (!mEvent)
-        return QDateTime();
-
-    return mEvent->dtEnd();
-}
-
-bool CalendarImportEvent::allDay() const
-{
-    if (!mEvent)
-        return false;
-
-    return mEvent->allDay();
-}
-
-CalendarEvent::Recur CalendarImportEvent::recur()
-{
-    if (!mEvent)
-        return CalendarEvent::RecurOnce;
-
-    return CalendarUtils::convertRecurrence(mEvent);
-}
-
-CalendarEvent::Days CalendarImportEvent::recurWeeklyDays()
-{
-    if (!mEvent)
-        return CalendarEvent::NoDays;
-
-    return CalendarUtils::convertDayPositions(mEvent);
-}
-
-int CalendarImportEvent::reminder() const
-{
-    // note: returns seconds before event, so 15 minutes before = 900.
-    //       zero value means "reminder at time of the event".
-    //       negative value means "no reminder".
-    return CalendarUtils::getReminder(mEvent);
-}
-
-QDateTime CalendarImportEvent::reminderDateTime() const
-{
-    return mEvent ? CalendarUtils::getReminderDateTime(mEvent) : QDateTime();
-}
-
-QString CalendarImportEvent::uniqueId() const
-{
-    if (!mEvent)
-        return QString();
-
-    return mEvent->uid();
-}
-
-QString CalendarImportEvent::color() const
-{
-    return mColor;
 }
 
 bool CalendarImportEvent::readOnly() const
@@ -132,52 +48,27 @@ bool CalendarImportEvent::readOnly() const
     return true;
 }
 
-QString CalendarImportEvent::location() const
-{
-    if (!mEvent)
-        return QString();
-
-    return mEvent->location();
-}
-
 QList<QObject *> CalendarImportEvent::attendees() const
 {
-    if (!mEvent)
-        return QList<QObject *>();
-
-    return CalendarUtils::convertAttendeeList(CalendarUtils::getEventAttendees(mEvent));
-}
-
-CalendarEvent::Secrecy CalendarImportEvent::secrecy() const
-{
-    if (!mEvent)
-        return CalendarEvent::SecrecyPublic;
-
-    return CalendarUtils::convertSecrecy(mEvent);
+    return CalendarUtils::convertAttendeeList(CalendarUtils::getEventAttendees(mIncidence.data));
 }
 
 QString CalendarImportEvent::organizer() const
 {
-    if (!mEvent)
-        return QString();
-
-    return mEvent->organizer().fullName();
+    return mIncidence.data->organizer().fullName();
 }
 
 QString CalendarImportEvent::organizerEmail() const
 {
-    if (!mEvent)
-        return QString();
-
-    return mEvent->organizer().email();
+    return mIncidence.data->organizer().email();
 }
 
 void CalendarImportEvent::setColor(const QString &color)
 {
-    if (mColor == color)
+    if (mNotebookColor == color)
         return;
 
-    mColor = color;
+    mNotebookColor = color;
     emit colorChanged();
 }
 
@@ -199,10 +90,7 @@ bool CalendarImportEvent::sendResponse(int response)
 
 QObject *CalendarImportEvent::nextOccurrence()
 {
-    if (!mEvent)
-        return 0;
-
-    CalendarData::EventOccurrence eo = CalendarUtils::getNextOccurrence(mEvent);
+    CalendarData::EventOccurrence eo = CalendarUtils::getNextOccurrence(mIncidence.data);
     return new CalendarEventOccurrence(eo.eventUid,
                                        eo.recurrenceId,
                                        eo.startTime,
