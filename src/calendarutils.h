@@ -44,24 +44,12 @@
 
 namespace CalendarUtils {
 
-CalendarEvent::Recur convertRecurrence(const KCalendarCore::Incidence::Ptr &event);
-CalendarEvent::Days convertDayPositions(const KCalendarCore::Incidence::Ptr &event);
-CalendarEvent::Secrecy convertSecrecy(const KCalendarCore::Incidence::Ptr &event);
-CalendarEvent::Status convertStatus(const KCalendarCore::Incidence::Ptr &event);
-CalendarEvent::SyncFailure convertSyncFailure(const KCalendarCore::Incidence::Ptr &event);
-int getReminder(const KCalendarCore::Incidence::Ptr &event);
-QDateTime getReminderDateTime(const KCalendarCore::Incidence::Ptr &event);
-bool getResponse(const KCalendarCore::Incidence::Ptr &event, const QString &calendarEmail, CalendarEvent::Response *response);
-bool getExternalInvitation(const QString &organizerEmail, const CalendarData::Notebook &notebook);
 QList<CalendarData::Attendee> getEventAttendees(const KCalendarCore::Incidence::Ptr &event);
 QList<QObject*> convertAttendeeList(const QList<CalendarData::Attendee> &list);
 CalendarData::EventOccurrence getNextOccurrence(const KCalendarCore::Incidence::Ptr &event,
                                                 const QDateTime &start = QDateTime::currentDateTime());
 bool importFromFile(const QString &fileName, KCalendarCore::Calendar::Ptr calendar);
 bool importFromIcsRawData(const QByteArray &icsData, KCalendarCore::Calendar::Ptr calendar);
-CalendarEvent::Response convertPartStat(KCalendarCore::Attendee::PartStat status);
-KCalendarCore::Attendee::PartStat convertResponse(CalendarEvent::Response response);
-CalendarEvent::Response convertResponseType(const QString &responseType);
 QString recurrenceIdToString(const QDateTime &dt);
 
 } // namespace CalendarUtils

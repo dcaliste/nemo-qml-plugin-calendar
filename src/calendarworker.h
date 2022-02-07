@@ -68,7 +68,7 @@ public slots:
                            const QDateTime &startTime);
     void deleteEvent(const QString &uid, const QDateTime &recurrenceId, const QDateTime &dateTime);
     void deleteAll(const QString &uid);
-    bool sendResponse(const KCalendarCore::Incidence::Ptr &event, const QString &ownerEmail,
+    bool sendResponse(const QString &uid, const QDateTime &recurrenceId,
                       const CalendarEvent::Response response);
     QString convertEventToICalendar(const QString &uid, const QString &prodId) const;
 
@@ -83,7 +83,6 @@ public slots:
 
     CalendarData::EventOccurrence getNextOccurrence(const QString &uid, const QDateTime &recurrenceId,
                                                     const QDateTime &startTime) const;
-    QList<CalendarData::Attendee> getEventAttendees(const QString &uid, const QDateTime &recurrenceId);
 
     void findMatchingEvent(const QString &invitationFile);
 

@@ -68,6 +68,7 @@ public:
     void saveModification(const CalendarData::Incidence &eventData);
     CalendarChangeInformation * replaceOccurrence(const CalendarData::Incidence &eventData,
                                                   CalendarEventOccurrence *occurrence);
+    bool sendResponse(const QString &uid, const QDateTime &recurrenceId, CalendarEvent::Response response);
     void deleteEvent(const QString &uid, const QDateTime &recurrenceId, const QDateTime &dateTime);
     void deleteAll(const QString &uid);
     void save();
@@ -78,7 +79,6 @@ public:
     // Event
     CalendarData::Incidence getIncidence(const QString &uid, const QDateTime &recurrenceId) const;
     CalendarData::Incidence getIncidence(const QString &instanceIdentifier, bool *loaded) const;
-    bool sendResponse(const CalendarData::Incidence &incidence, CalendarEvent::Response response);
 
     // Notebooks
     QList<CalendarData::Notebook> notebooks();

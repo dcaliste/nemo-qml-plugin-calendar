@@ -117,7 +117,7 @@ void CalendarWorker::storageFinished(mKCal::ExtendedStorage *storage, bool error
 
 void CalendarWorker::deleteEvent(const QString &uid, const QDateTime &recurrenceId, const QDateTime &dateTime)
 {
-    KCalendarCore::Event::Ptr event = mCalendar->event(uid, recurrenceId);
+    KCalendarCore::Incidence::Ptr event = mCalendar->incidence(uid, recurrenceId);
     if (!event && mStorage->load(uid, recurrenceId)) {
         event = mCalendar->event(uid, recurrenceId);
     }
@@ -133,7 +133,7 @@ void CalendarWorker::deleteEvent(const QString &uid, const QDateTime &recurrence
         event->recurrence()->addExDateTime(dateTime);
         event->setRevision(event->revision() + 1);
     } else {
-        mCalendar->deleteEvent(event);
+        mCalendar->deleteIncidence(event);
         mDeletedEvents.append(QPair<QString, QDateTime>(uid, recurrenceId));
     }
 }
@@ -154,16 +154,30 @@ void CalendarWorker::deleteAll(const QString &uid)
     mDeletedEvents.append(QPair<QString, QDateTime>(uid, QDateTime()));
 }
 
-bool CalendarWorker::sendResponse(const KCalendarCore::Incidence::Ptr &event, const QString &ownerEmail,
+bool CalendarWorker::sendResponse(const QString &uid, const QDateTime &recurrenceId,
                                   const CalendarEvent::Response response)
 {
+    KCalendarCore::Incidence::Ptr event = mCalendar->incidence(uid, recurrenceId);
     if (!event) {
         qWarning() << "Failed to send response, empty event.";
         return false;
     }
+    const QString ownerEmail = mNotebooks.value(mCalendar->notebook(event)).emailAddress;
     const KCalendarCore::Attendee origAttendee = event->attendeeByMail(ownerEmail);
     KCalendarCore::Attendee updated = origAttendee;
-    updated.setStatus(CalendarUtils::convertResponse(response));
+    switch (response) {
+    case CalendarEvent::ResponseAccept:
+        updated.setStatus(KCalendarCore::Attendee::Accepted);
+        break;
+    case CalendarEvent::ResponseTentative:
+        updated.setStatus(KCalendarCore::Attendee::Tentative);
+        break;
+    case CalendarEvent::ResponseDecline:
+        updated.setStatus(KCalendarCore::Attendee::Declined);
+        break;
+    default:
+        updated.setStatus(KCalendarCore::Attendee::NeedsAction);
+    }
     updateAttendee(event, origAttendee, updated);
 
     bool sent = mKCal::ServiceHandler::instance().sendResponse(event, event->description(), mCalendar, mStorage);
@@ -716,19 +730,6 @@ CalendarData::EventOccurrence CalendarWorker::getNextOccurrence(const QString &u
 {
     KCalendarCore::Event::Ptr event = mCalendar->event(uid, recurrenceId);
     return CalendarUtils::getNextOccurrence(event, start);
-}
-
-QList<CalendarData::Attendee> CalendarWorker::getEventAttendees(const QString &uid, const QDateTime &recurrenceId)
-{
-    QList<CalendarData::Attendee> result;
-
-    KCalendarCore::Event::Ptr event = mCalendar->event(uid, recurrenceId);
-
-    if (event.isNull()) {
-        return result;
-    }
-
-    return CalendarUtils::getEventAttendees(event);
 }
 
 void CalendarWorker::findMatchingEvent(const QString &invitationFile)

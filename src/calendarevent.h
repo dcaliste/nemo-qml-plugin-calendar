@@ -189,6 +189,7 @@ signals:
 
 protected:
     void cacheIncidence();
+    void updateIncidence() const;
 
     CalendarData::Incidence mIncidence;
     // Cached values, requiring a processing from mIncidence.
@@ -197,12 +198,19 @@ protected:
     QDate mRecurEndDate;
     int mReminder = -1;
     QDateTime mReminderDateTime;
-    SyncFailure mSyncFailure = NoSyncFailure;
     bool mReadOnly = false;
     bool mRSVP = false;
     bool mExternalInvitation = false;
     Response mOwnerStatus = ResponseUnspecified;
     QString mNotebookColor;
+
+private:
+    int getIncidenceReminder() const;
+    QDateTime getIncidenceReminderDateTime() const;
+    void updateIncidenceReminder() const;
+    CalendarEvent::Recur getIncidenceRecurrence() const;
+    CalendarEvent::Days getIncidenceDayPositions() const;
+    void updateIncidenceRecurrence() const;
 };
 
 class CalendarManager;
@@ -224,6 +232,8 @@ private slots:
     // void eventUidChanged(QString oldUid, QString newUid);
 
 private:
+    bool getIncidenceResponse(const QString &calendarEmail, CalendarEvent::Response *response) const;
+
     CalendarManager *mManager;
 };
 

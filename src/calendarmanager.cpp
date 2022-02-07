@@ -620,13 +620,13 @@ CalendarData::Incidence CalendarManager::getIncidence(const QString &instanceIde
     return CalendarData::Incidence();
 }
 
-bool CalendarManager::sendResponse(const CalendarData::Incidence &incidence, CalendarEvent::Response response)
+bool CalendarManager::sendResponse(const QString &uid, const QDateTime &recurrenceId, CalendarEvent::Response response)
 {
     bool result;
     QMetaObject::invokeMethod(mCalendarWorker, "sendResponse", Qt::BlockingQueuedConnection,
                               Q_RETURN_ARG(bool, result),
-                              Q_ARG(KCalendarCore::Incidence::Ptr, incidence.data),
-                              Q_ARG(QString, mNotebooks.value(incidence.notebookUid).emailAddress),
+                              Q_ARG(QString, uid),
+                              Q_ARG(QDateTime, recurrenceId),
                               Q_ARG(CalendarEvent::Response, response));
     return result;
 }
@@ -764,27 +764,14 @@ CalendarEventOccurrence* CalendarManager::getNextOccurrence(const QString &uid, 
 
 QList<CalendarData::Attendee> CalendarManager::getEventAttendees(const QString &uid, const QDateTime &recurrenceId, bool *resultValid)
 {
-    QList<CalendarData::Attendee> attendees;
-
-    // Not foolproof, since thread interleaving means we might
-    // receive a storageModified() signal on the worker thread
-    // while we're dispatching this call here.
-    // But, this will at least ensure that if we _know_ that
-    // the storage is not in loaded state, that we don't
-    // attempt to read the invalid data.
-    // The other alternative would be to cache all attendee
-    // info in the event struct immediately within
-    // CalendarWorker::createEventStruct(), however it was
-    // decided that it would be better to avoid the memory usage.
-    *resultValid = !(mLoadPending || mResetPending);
-    if (*resultValid) {
-        QMetaObject::invokeMethod(mCalendarWorker, "getEventAttendees", Qt::BlockingQueuedConnection,
-                                  Q_RETURN_ARG(QList<CalendarData::Attendee>, attendees),
-                                  Q_ARG(QString, uid),
-                                  Q_ARG(QDateTime, recurrenceId));
+    const CalendarData::Incidence &incidence = getIncidence(uid, recurrenceId);
+    if (incidence.data) {
+        if (resultValid)
+            *resultValid = true;
+        return CalendarUtils::getEventAttendees(incidence.data);
+    } else if (resultValid) {
+        *resultValid = false;
     }
-
-    return attendees;
 }
 
 void CalendarManager::dataLoadedSlot(const QList<CalendarData::Range> &ranges,

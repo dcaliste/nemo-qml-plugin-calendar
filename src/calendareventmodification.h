@@ -96,6 +96,9 @@ public:
     Q_INVOKABLE void save();
     Q_INVOKABLE CalendarChangeInformation * replaceOccurrence(CalendarEventOccurrence *occurrence);
 
+protected:
+    void updateIncidence() const;
+
 signals:
     void displayLabelChanged();
     void descriptionChanged();

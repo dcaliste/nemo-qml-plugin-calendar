@@ -35,7 +35,6 @@
 #include "calendarutils.h"
 
 #include <QTimeZone>
-#include <QBitArray>
 #include <QDebug>
 
 namespace {
@@ -207,109 +206,6 @@ void CalendarEventModification::setAttendees(CalendarContactModel *required, Cal
     m_optionalAttendees = optional->getList();
 }
 
-static void updateRecurrence(KCalendarCore::Incidence::Ptr &event,
-                             CalendarEvent::Recur recur, CalendarEvent::Days days,
-                             const QDate &recurEndDate)
-{
-    if (!event)
-        return;
-
-    CalendarEvent::Recur oldRecur = CalendarUtils::convertRecurrence(event);
-
-    if (oldRecur != recur
-        || recur == CalendarEvent::RecurMonthlyByDayOfWeek
-        || recur == CalendarEvent::RecurMonthlyByLastDayOfWeek
-        || recur == CalendarEvent::RecurWeeklyByDays) {
-        switch (recur) {
-        case CalendarEvent::RecurOnce:
-            event->recurrence()->clear();
-            break;
-        case CalendarEvent::RecurDaily:
-            event->recurrence()->setDaily(1);
-            break;
-        case CalendarEvent::RecurWeekly:
-            event->recurrence()->setWeekly(1);
-            break;
-        case CalendarEvent::RecurBiweekly:
-            event->recurrence()->setWeekly(2);
-            break;
-        case CalendarEvent::RecurWeeklyByDays: {
-            QBitArray rDays(7);
-            rDays.setBit(0, days & CalendarEvent::Monday);
-            rDays.setBit(1, days & CalendarEvent::Tuesday);
-            rDays.setBit(2, days & CalendarEvent::Wednesday);
-            rDays.setBit(3, days & CalendarEvent::Thursday);
-            rDays.setBit(4, days & CalendarEvent::Friday);
-            rDays.setBit(5, days & CalendarEvent::Saturday);
-            rDays.setBit(6, days & CalendarEvent::Sunday);
-            event->recurrence()->setWeekly(1, rDays);
-            break;
-        }
-        case CalendarEvent::RecurMonthly:
-            event->recurrence()->setMonthly(1);
-            break;
-        case CalendarEvent::RecurMonthlyByDayOfWeek: {
-            event->recurrence()->setMonthly(1);
-            const QDate at(event->dtStart().date());
-            event->recurrence()->addMonthlyPos((at.day() - 1) / 7 + 1, at.dayOfWeek());
-            break;
-        }
-        case CalendarEvent::RecurMonthlyByLastDayOfWeek: {
-            event->recurrence()->setMonthly(1);
-            const QDate at(event->dtStart().date());
-            event->recurrence()->addMonthlyPos(-1, at.dayOfWeek());
-            break;
-        }
-        case CalendarEvent::RecurYearly:
-            event->recurrence()->setYearly(1);
-            break;
-        case CalendarEvent::RecurCustom:
-            // Unable to handle the recurrence rules, keep the existing ones.
-            break;
-        }
-    }
-    if (recur != CalendarEvent::RecurOnce) {
-        event->recurrence()->setEndDate(recurEndDate);
-        if (!recurEndDate.isValid()) {
-            // Recurrence/RecurrenceRule don't have separate method to clear the end date, and currently
-            // setting invalid date doesn't make the duration() indicate recurring infinitely.
-            event->recurrence()->setDuration(-1);
-        }
-    }
-}
-
-static void updateReminder(KCalendarCore::Incidence::Ptr &event, int seconds, const QDateTime &dateTime)
-{
-    if (!event)
-        return;
-
-    if (CalendarUtils::getReminder(event) == seconds
-        && CalendarUtils::getReminderDateTime(event) == dateTime)
-        return;
-
-    KCalendarCore::Alarm::List alarms = event->alarms();
-    for (int ii = 0; ii < alarms.count(); ++ii) {
-        if (alarms.at(ii)->type() == KCalendarCore::Alarm::Procedure)
-            continue;
-        event->removeAlarm(alarms.at(ii));
-    }
-
-    // negative reminder seconds means "no reminder", so only
-    // deal with positive (or zero = at time of event) reminders.
-    if (seconds >= 0) {
-        KCalendarCore::Alarm::Ptr alarm = event->newAlarm();
-        alarm->setEnabled(true);
-        // backend stores as "offset to dtStart", i.e negative if reminder before event.
-        alarm->setStartOffset(-1 * seconds);
-        alarm->setType(KCalendarCore::Alarm::Display);
-    } else if (dateTime.isValid()) {
-        KCalendarCore::Alarm::Ptr alarm = event->newAlarm();
-        alarm->setEnabled(true);
-        alarm->setTime(dateTime);
-        alarm->setType(KCalendarCore::Alarm::Display);
-    }
-}
-
 static void updateAttendee(KCalendarCore::Attendee::List &attendees,
                            const CalendarData::EmailContact &contact,
                            KCalendarCore::Attendee::Role role)
@@ -376,21 +272,21 @@ static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
     event->setAttendees(attendees);
 }
 
+void CalendarEventModification::updateIncidence() const
+{
+    CalendarEvent::updateIncidence();
+    if (m_attendeesSet)
+        updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
+}
+
 void CalendarEventModification::save()
 {
     updateIncidence();
-    if (m_attendeesSet)
-        updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
-
     CalendarManager::instance()->saveModification(mIncidence);
 }
 
-CalendarChangeInformation *
-CalendarEventModification::replaceOccurrence(CalendarEventOccurrence *occurrence)
+CalendarChangeInformation * CalendarEventModification::replaceOccurrence(CalendarEventOccurrence *occurrence)
 {
     updateIncidence();
-    if (m_attendeesSet)
-        updateAttendees(mIncidence.data, m_requiredAttendees, m_optionalAttendees, mIncidence.notebookUid);
-
     return CalendarManager::instance()->replaceOccurrence(mIncidence, occurrence);
 }
