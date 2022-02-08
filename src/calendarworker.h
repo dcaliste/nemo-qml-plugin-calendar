@@ -82,6 +82,8 @@ public slots:
                   const QStringList &instanceList, bool reset);
 
     void findMatchingEvent(const QString &invitationFile);
+    
+    CalendarData::EventOccurrence nextOccurrence(const QString &uid, const QDateTime &recurrenceId, const QDateTime &start) const;
 
 signals:
     void storageModifiedSignal(const QString &info);
@@ -112,10 +114,6 @@ private:
     bool saveExcludeNotebook(const QString &notebookUid, bool exclude);
 
     bool needSendCancellation(KCalendarCore::Event::Ptr &event) const;
-    void updateEventAttendees(const KCalendarCore::Incidence::Ptr &event, bool newEvent,
-                              const QList<CalendarData::EmailContact> &required,
-                              const QList<CalendarData::EmailContact> &optional,
-                              const QString &notebookUid);
 
     QHash<QString, CalendarData::EventOccurrence> eventOccurrences(const QList<CalendarData::Range> &ranges) const;
     QHash<QDate, QStringList> dailyEventOccurrences(const QList<CalendarData::Range> &ranges,

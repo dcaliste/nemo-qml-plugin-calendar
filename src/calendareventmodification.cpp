@@ -207,16 +207,16 @@ void CalendarEventModification::setAttendees(CalendarContactModel *required, Cal
 }
 
 static void updateAttendee(KCalendarCore::Attendee::List &attendees,
-                           const CalendarData::EmailContact &contact,
+                           const KCalendarCore::Person &contact,
                            KCalendarCore::Attendee::Role role)
 {
     KCalendarCore::Attendee::List::Iterator it =
         std::find_if(attendees.begin(), attendees.end(),
                      [contact] (const KCalendarCore::Attendee &attendee)
-                     {return attendee.email() == contact.email;});
+                     {return attendee.email() == contact.email();});
     if (it == attendees.end()) {
         attendees.append(KCalendarCore::Attendee
-                         (contact.name, contact.email, true /* rsvp */,
+                         (contact.name(), contact.email(), true /* rsvp */,
                           KCalendarCore::Attendee::NeedsAction, role));
     } else {
         it->setRole(role);
@@ -226,8 +226,8 @@ static void updateAttendee(KCalendarCore::Attendee::List &attendees,
 // use explicit notebook uid so we don't need to assume the events involved being added there.
 // the related notebook is just needed to associate updates to some plugin/account
 static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
-                            const QList<CalendarData::EmailContact> &required,
-                            const QList<CalendarData::EmailContact> &optional,
+                            const QList<KCalendarCore::Person> &required,
+                            const QList<KCalendarCore::Person> &optional,
                             const QString &notebookUid)
 {
     if (notebookUid.isEmpty()) {
@@ -250,12 +250,12 @@ static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
         bool remove = true;
         remove = remove
             && (std::find_if(required.constBegin(), required.constEnd(),
-                             [it] (const CalendarData::EmailContact &data)
-                             {return data.email == it->email();}) == required.constEnd());
+                             [it] (const KCalendarCore::Person &data)
+                             {return data.email() == it->email();}) == required.constEnd());
         remove = remove
             && (std::find_if(optional.constBegin(), optional.constEnd(),
-                             [it] (const CalendarData::EmailContact &data)
-                             {return data.email == it->email();}) == optional.constEnd());
+                             [it] (const KCalendarCore::Person &data)
+                             {return data.email() == it->email();}) == optional.constEnd());
         // if there are non-participants getting update as FYI, or chair for any reason,
         // avoid sending them the cancel
         remove = remove && it->role() != KCalendarCore::Attendee::ReqParticipant
@@ -265,9 +265,9 @@ static void updateAttendees(const KCalendarCore::Incidence::Ptr &event,
         else
             ++it;
     }
-    for (const CalendarData::EmailContact &contact : required)
+    for (const KCalendarCore::Person &contact : required)
         updateAttendee(attendees, contact, KCalendarCore::Attendee::ReqParticipant);
-    for (const CalendarData::EmailContact &contact : optional)
+    for (const KCalendarCore::Person &contact : optional)
         updateAttendee(attendees, contact, KCalendarCore::Attendee::OptParticipant);
     event->setAttendees(attendees);
 }

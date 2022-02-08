@@ -116,8 +116,8 @@ signals:
 
 private:
     bool m_attendeesSet;
-    QList<CalendarData::EmailContact> m_requiredAttendees;
-    QList<CalendarData::EmailContact> m_optionalAttendees;
+    QList<KCalendarCore::Person> m_requiredAttendees;
+    QList<KCalendarCore::Person> m_optionalAttendees;
 };
 
 #endif

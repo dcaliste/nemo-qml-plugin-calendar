@@ -36,8 +36,9 @@
 #include <QTimeZone>
 #include <QBitArray>
 
-#include "calendarutils.h"
+#include "calendareventoccurrence.h"
 #include "calendarmanager.h"
+#include "calendarutils.h"
 
 CalendarEvent::CalendarEvent(QObject *parent)
     : QObject(parent)
@@ -540,12 +541,17 @@ CalendarStoredEvent::CalendarStoredEvent(CalendarManager *manager, const Calenda
             this, &CalendarStoredEvent::notebookColorChanged);
     // connect(mManager, SIGNAL(eventUidChanged(QString,QString)),
     //         this, SLOT(eventUidChanged(QString,QString)));
-    if (!incidence.data->uid().isEmpty())
+    if (incidence.data && !incidence.data->uid().isEmpty())
         setIncidence(incidence);
 }
 
 CalendarStoredEvent::~CalendarStoredEvent()
 {
+}
+
+bool CalendarStoredEvent::isValid() const
+{
+    return mIncidence.data && !mIncidence.data->uid().isEmpty();
 }
 
 static CalendarEvent::Response convertPartStat(KCalendarCore::Attendee::PartStat status)

@@ -124,18 +124,6 @@ bool CalendarUtils::importFromFile(const QString &fileName,
     return ok;
 }
 
-bool CalendarUtils::importFromIcsRawData(const QByteArray &icsData,
-                                         KCalendarCore::Calendar::Ptr calendar)
-{
-    bool ok = false;
-    KCalendarCore::ICalFormat icalFormat;
-    ok = icalFormat.fromRawString(calendar, icsData);
-    if (!ok)
-        qWarning() << "Failed to import from raw data";
-
-    return ok;
-}
-
 QString CalendarUtils::recurrenceIdToString(const QDateTime &dt)
 {
     // Convert to Qt::OffsetFromUTC spec to ensure time zone offset is included in string format,

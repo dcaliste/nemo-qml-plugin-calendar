@@ -332,8 +332,8 @@ void CalendarWorker::replaceOccurrence(const CalendarData::Incidence &eventData,
             ? QDateTime(startTime.date(), startTime.time(), Qt::LocalTime)
             : startTime;
 
-    KCalendarCore::Incidence::Ptr replacementIncidence = mCalendar->dissociateSingleOccurrence(
-            eventData.data, occurrence);
+    KCalendarCore::Incidence::Ptr replacementIncidence
+        = mCalendar->dissociateSingleOccurrence(event, occurrence);
     if (!replacementIncidence) {
         qWarning("Didn't find event occurrence to replace");
         emit occurrenceExceptionFailed(eventData, startTime);
@@ -611,6 +611,47 @@ void CalendarWorker::loadData(const QList<CalendarData::Range> &ranges,
     QHash<QDate, QStringList> dailyOccurrences = dailyEventOccurrences(ranges, occurrences.values());
 
     emit dataLoaded(ranges, instanceList, events, occurrences, dailyOccurrences, reset);
+}
+
+CalendarData::EventOccurrence CalendarWorker::nextOccurrence(const QString &uid, const QDateTime &recurrenceId, const QDateTime &start) const
+{
+    CalendarData::EventOccurrence eo;
+    
+    if (!start.isNull() && !mStorage->loadSeries(uid)) {
+        qWarning() << "unable to load series of" << uid;
+        return eo;
+    }
+    KCalendarCore::Incidence::Ptr event = mCalendar->incidence(uid, recurrenceId);
+    if (!event) {
+        qWarning() << "unable to find incidence" << uid << recurrenceId;
+        return eo;
+    }
+
+    eo.eventUid = uid;
+    eo.recurrenceId = recurrenceId;
+    eo.eventAllDay = event->allDay();
+    const QTimeZone systemTimeZone = QTimeZone::systemTimeZone();
+    KCalendarCore::OccurrenceIterator it(*mCalendar, event, start);
+    if (!start.isNull() && it.hasNext()) {
+        it.next();
+        eo.startTime = it.occurrenceStartDate().toTimeZone(systemTimeZone);
+        //eo.endTime = it.occurrenceEndDate().toTimeZone(systemTimeZone);
+        if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
+            eo.endTime = KCalendarCore::Duration(event->dtStart(), event.staticCast<KCalendarCore::Event>()->dtEnd()).end(eo.startTime).toTimeZone(systemTimeZone);
+    } else if (!start.isNull() && event->recurs()) {
+        const QDateTime match = event->recurrence()->getPreviousDateTime(start);
+        if (match.isValid()) {
+            eo.startTime = match.toTimeZone(systemTimeZone);
+            if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
+                eo.endTime = KCalendarCore::Duration(event->dtStart(), event.staticCast<KCalendarCore::Event>()->dtEnd()).end(match).toTimeZone(systemTimeZone);
+        }
+    } else {
+        eo.startTime = event->dtStart().toTimeZone(systemTimeZone);
+        if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
+            eo.endTime = event.staticCast<KCalendarCore::Event>()->dtEnd().toTimeZone(systemTimeZone);
+    }
+
+    return eo;
 }
 
 static bool serviceIsEnabled(Accounts::Account *account, const QString &syncProfile)

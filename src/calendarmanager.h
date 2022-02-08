@@ -64,6 +64,7 @@ public:
     ~CalendarManager();
 
     CalendarStoredEvent* eventObject(const QString &eventUid, const QDateTime &recurrenceId);
+    CalendarData::EventOccurrence nextOccurrence(const QString &uid, const QDateTime &recurrenceId, const QDateTime &start) const;
 
     void saveModification(const CalendarData::Incidence &eventData);
     CalendarChangeInformation * replaceOccurrence(const CalendarData::Incidence &eventData,

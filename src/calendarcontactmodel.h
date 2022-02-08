@@ -3,7 +3,7 @@
 
 #include <QAbstractListModel>
 
-#include "calendardata.h"
+#include <KCalendarCore/Person>
 
 class CalendarContactModel : public QAbstractListModel
 {
@@ -30,7 +30,7 @@ public:
     Q_INVOKABLE QString name(int index) const;
     Q_INVOKABLE QString email(int index) const;
 
-    QList<CalendarData::EmailContact> getList();
+    QList<KCalendarCore::Person> getList();
 
 signals:
     void countChanged();
@@ -39,7 +39,7 @@ protected:
     virtual QHash<int, QByteArray> roleNames() const;
 
 private:
-    QList<CalendarData::EmailContact> m_contacts;
+    QList<KCalendarCore::Person> m_contacts;
 };
 
 #endif

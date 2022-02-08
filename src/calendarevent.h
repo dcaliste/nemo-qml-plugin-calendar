@@ -37,6 +37,7 @@
 #include <QDateTime>
 
 #include "calendardata.h"
+#include "calendareventoccurrence.h"
 
 class Person : public QObject
 {
@@ -267,15 +268,20 @@ class CalendarManager;
 class CalendarStoredEvent : public CalendarEvent
 {
     Q_OBJECT
+    Q_PROPERTY(bool isValid READ isValid NOTIFY isValidChanged)
 public:
     CalendarStoredEvent(CalendarManager *manager, const CalendarData::Incidence &incidence);
     ~CalendarStoredEvent();
 
+    bool isValid() const;
     void setIncidence(const CalendarData::Incidence &incidence);
 
     Q_INVOKABLE bool sendResponse(int response);
     Q_INVOKABLE QString iCalendar(const QString &prodId = QString()) const;
     Q_INVOKABLE void deleteEvent();
+
+signals:
+    void isValidChanged();
 
 private slots:
     void notebookColorChanged(QString notebookUid);

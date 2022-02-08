@@ -531,12 +531,7 @@ void tst_CalendarManager::test_notebookApi()
     QSignalSpy defaultNotebookSpy(manager, SIGNAL(defaultNotebookChanged(QString)));
 
     // Wait for the manager to open the calendar database, etc
-    for (int i = 0; i < 30; i++) {
-        if (notebookSpy.count() > 0)
-            break;
-
-        QTest::qWait(100);
-    }
+    QVERIFY(notebookSpy.wait());
     QCOMPARE(notebookSpy.count(), 1);
     QCOMPARE(defaultNotebookSpy.count(), 1);
     int notebookCount = manager->notebooks().count();
@@ -600,14 +595,16 @@ void tst_CalendarManager::test_notebookApi()
 
 void tst_CalendarManager::cleanupTestCase()
 {
-    CalendarManager::instance()->setDefaultNotebook(mDefaultNotebook);
+    if (!mDefaultNotebook.isEmpty())
+        CalendarManager::instance()->setDefaultNotebook(mDefaultNotebook);
     delete CalendarManager::instance();
     foreach (const mKCal::Notebook::Ptr &notebookPtr, mAddedNotebooks)
         mStorage->deleteNotebook(notebookPtr);
 
-    mStorage->save();
-    mStorage->close();
-    mStorage.clear();
+    if (mStorage) {
+        mStorage->save();
+        mStorage.clear();
+    }
     mCalendar.clear();
 }
 

@@ -47,7 +47,6 @@ namespace CalendarUtils {
 CalendarData::EventOccurrence getNextOccurrence(const KCalendarCore::Incidence::Ptr &event,
                                                 const QDateTime &start = QDateTime::currentDateTime());
 bool importFromFile(const QString &fileName, KCalendarCore::Calendar::Ptr calendar);
-bool importFromIcsRawData(const QByteArray &icsData, KCalendarCore::Calendar::Ptr calendar);
 QString recurrenceIdToString(const QDateTime &dt);
 
 } // namespace CalendarUtils

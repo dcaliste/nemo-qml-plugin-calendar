@@ -42,6 +42,7 @@
 
 // kcalendarcore
 #include <KCalendarCore/MemoryCalendar>
+#include <KCalendarCore/ICalFormat>
 
 CalendarImportModel::CalendarImportModel(QObject *parent)
     : QAbstractListModel(parent),
@@ -187,7 +188,10 @@ bool CalendarImportModel::importToMemory(const QString &fileName, const QByteArr
     if (!fileName.isEmpty()) {
         success = CalendarUtils::importFromFile(fileName, cal);
     } else if (!icsData.isEmpty()) {
-        success = CalendarUtils::importFromIcsRawData(icsData, cal);
+        KCalendarCore::ICalFormat icalFormat;
+        success = icalFormat.fromRawString(cal, icsData);
+        if (!success)
+            qWarning() << "Failed to import from raw data";
     }
 
     beginResetModel();

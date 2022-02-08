@@ -117,10 +117,10 @@ void tst_CalendarAgendaModel::testStartEndDate()
 {
     CalendarAgendaModel *model = new CalendarAgendaModel;
 
-    QSignalSpy *updated = new QSignalSpy(model, &CalendarAgendaModel::updated);
+    QSignalSpy updated(model, &CalendarAgendaModel::updated);
     model->setStartDate(QDate(2021, 11, 17));
     model->setEndDate(QDate(2021, 11, 19));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 2);
     CalendarEventOccurrence *occurrence1 = model->get(0, CalendarAgendaModel::OccurrenceObjectRole).value<CalendarEventOccurrence*>();
     QCOMPARE(occurrence1->eventObject()->description(), QString::fromLatin1("event 1"));
@@ -128,14 +128,13 @@ void tst_CalendarAgendaModel::testStartEndDate()
     QCOMPARE(occurrence2->eventObject()->description(), QString::fromLatin1("event 2"));
     model->setStartDate(QDate(2021, 11, 17));
     model->setEndDate(QDate(2021, 11, 17));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 0);
     model->setStartDate(QDate(2021, 11, 18));
     model->setEndDate(QDate(2021, 11, 18));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 1);
 
-    delete updated;
     delete model;
 }
 
@@ -145,19 +144,18 @@ void tst_CalendarAgendaModel::testTimeZone()
     qputenv("TZ", "Europe/Paris");
     CalendarAgendaModel *model = new CalendarAgendaModel;
 
-    QSignalSpy *updated = new QSignalSpy(model, &CalendarAgendaModel::updated);
+    QSignalSpy updated(model, &CalendarAgendaModel::updated);
     model->setStartDate(QDate(2021, 11, 10));
     model->setEndDate(QDate(2021, 11, 10));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 1);
     CalendarEventOccurrence *occurrence1 = model->get(0, CalendarAgendaModel::OccurrenceObjectRole).value<CalendarEventOccurrence*>();
     QCOMPARE(occurrence1->eventObject()->description(), QString::fromLatin1("event far away"));
     model->setStartDate(QDate(2021, 11, 9));
     model->setEndDate(QDate(2021, 11, 10));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 1);
 
-    delete updated;
     delete model;
 
     if (TZenv.isEmpty()) {
@@ -171,10 +169,10 @@ void tst_CalendarAgendaModel::testAllDays()
 {
     CalendarAgendaModel *model = new CalendarAgendaModel;
 
-    QSignalSpy *updated = new QSignalSpy(model, &CalendarAgendaModel::updated);
+    QSignalSpy updated(model, &CalendarAgendaModel::updated);
     model->setStartDate(QDate(2021, 10, 11));
     model->setEndDate(QDate(2021, 10, 12));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 2);
     CalendarEventOccurrence *occurrence1 = model->get(0, CalendarAgendaModel::OccurrenceObjectRole).value<CalendarEventOccurrence*>();
     QCOMPARE(occurrence1->eventObject()->description(), QString::fromLatin1("all day event 1"));
@@ -182,14 +180,13 @@ void tst_CalendarAgendaModel::testAllDays()
     QCOMPARE(occurrence2->eventObject()->description(), QString::fromLatin1("all day event 2"));
     model->setStartDate(QDate(2021, 10, 9));
     model->setEndDate(QDate(2021, 10, 9));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 0);
     model->setStartDate(QDate(2021, 10, 11));
     model->setEndDate(QDate(2021, 10, 11));
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     QCOMPARE(model->count(), 1);
 
-    delete updated;
     delete model;
 }
 
@@ -199,18 +196,18 @@ void tst_CalendarAgendaModel::testTiming()
     CalendarManager *manager = CalendarManager::instance();
     CalendarAgendaModel *model = new CalendarAgendaModel;
 
-    QSignalSpy *ready = new QSignalSpy(manager, &CalendarManager::notebooksChanged);
+    QSignalSpy ready(manager, &CalendarManager::notebooksChanged);
     if (manager->notebooks().isEmpty())
-        QVERIFY(ready->wait());
+        QVERIFY(ready.wait());
 
-    QSignalSpy *updated = new QSignalSpy(model, &CalendarAgendaModel::updated);
-    QSignalSpy *loaded = new QSignalSpy(manager->mCalendarWorker, &CalendarWorker::dataLoaded);
+    QSignalSpy updated(model, &CalendarAgendaModel::updated);
+    QSignalSpy loaded(manager->mCalendarWorker, &CalendarWorker::dataLoaded);
     model->setStartDate(QDate(2021, 1, 1));
     model->setEndDate(QDate(2021, 12, 31));
     clock.start();
-    QVERIFY(loaded->wait());
+    QVERIFY(loaded.wait());
     qDebug() << "time in the worker thread " << clock.elapsed() << "ms";
-    QVERIFY(updated->wait());
+    QVERIFY(updated.wait());
     qDebug() << "time to populate agenda with" << model->count() << "incidences in" << clock.elapsed() << "ms";
 
     delete model;

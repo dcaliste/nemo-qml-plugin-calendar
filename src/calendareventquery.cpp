@@ -191,7 +191,9 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
         mOccurrence = 0;
 
         if (mEvent.data) {
-            CalendarData::EventOccurrence eo = CalendarUtils::getNextOccurrence(mEvent.data, mStartTime);
+            // Need to take into account exceptions, which are not part of event.data
+            CalendarData::EventOccurrence eo =
+                CalendarManager::instance()->nextOccurrence(mUid, mRecurrenceId, mStartTime);
             if (eo.startTime.isValid()) {
                 mOccurrence =
                     new CalendarEventOccurrence(eo.eventUid, eo.recurrenceId,

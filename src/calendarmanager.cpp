@@ -59,7 +59,7 @@ CalendarManager::CalendarManager()
     qRegisterMetaType<CalendarData::Range>("CalendarData::Range");
     qRegisterMetaType<QList<CalendarData::Range > >("QList<CalendarData::Range>");
     qRegisterMetaType<QList<CalendarData::Notebook> >("QList<CalendarData::Notebook>");
-    qRegisterMetaType<QList<CalendarData::EmailContact> >("QList<CalendarData::EmailContact>");
+    qRegisterMetaType<QList<KCalendarCore::Person> >("QList<KCalendarCore::Person>");
 
     mCalendarWorker = new CalendarWorker();
     mCalendarWorker->moveToThread(&mWorkerThread);
@@ -171,6 +171,17 @@ CalendarStoredEvent* CalendarManager::eventObject(const QString &eventUid, const
     qWarning() << Q_FUNC_INFO << "No event with uid" << eventUid << recurrenceId << ", returning empty event";
 
     return new CalendarStoredEvent(this, CalendarData::Incidence{KCalendarCore::Incidence::Ptr(new KCalendarCore::Event()), defaultNotebook()});
+}
+
+CalendarData::EventOccurrence CalendarManager::nextOccurrence(const QString &uid, const QDateTime &recurrenceId, const QDateTime &start) const
+{
+    CalendarData::EventOccurrence eo;
+    QMetaObject::invokeMethod(mCalendarWorker, "nextOccurrence", Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(CalendarData::EventOccurrence, eo),
+                              Q_ARG(QString, uid),
+                              Q_ARG(QDateTime, recurrenceId),
+                              Q_ARG(QDateTime, start));
+    return eo;
 }
 
 void CalendarManager::saveModification(const CalendarData::Incidence &eventData)
