@@ -173,15 +173,6 @@ CalendarStoredEvent* CalendarManager::eventObject(const QString &eventUid, const
     return new CalendarStoredEvent(this, CalendarData::Incidence{KCalendarCore::Incidence::Ptr(new KCalendarCore::Event()), defaultNotebook()});
 }
 
-CalendarEventModification* CalendarManager::eventModification(const QString &eventUid, const QDateTime &recurrenceId) const
-{
-    CalendarData::Incidence incidence = getIncidence(eventUid, recurrenceId);
-    if (incidence.data)
-        return new CalendarEventModification(incidence);
-    else
-        return new CalendarEventModification();
-}
-
 void CalendarManager::saveModification(const CalendarData::Incidence &eventData)
 {
     QMetaObject::invokeMethod(mCalendarWorker, "saveEvent", Qt::QueuedConnection,
@@ -760,37 +751,6 @@ void CalendarManager::notebooksChangedSlot(const QList<CalendarData::Notebook> &
         if (!newDefaultNotebookUid.isEmpty())
             emit defaultNotebookChanged(newDefaultNotebookUid);
     }
-}
-
-CalendarEventOccurrence* CalendarManager::getNextOccurrence(const QString &uid, const QDateTime &recurrenceId,
-                                                            const QDateTime &start)
-{
-    CalendarData::EventOccurrence eo;
-    QMetaObject::invokeMethod(mCalendarWorker, "getNextOccurrence", Qt::BlockingQueuedConnection,
-                              Q_RETURN_ARG(CalendarData::EventOccurrence, eo),
-                              Q_ARG(QString, uid),
-                              Q_ARG(QDateTime, recurrenceId),
-                              Q_ARG(QDateTime, start));
-
-    if (!eo.startTime.isValid()) {
-        qWarning() << Q_FUNC_INFO << "Unable to find occurrence for event" << uid << recurrenceId;
-        return new CalendarEventOccurrence(QString(), QDateTime(), QDateTime(), QDateTime());
-    }
-
-    return new CalendarEventOccurrence(eo.eventUid, eo.recurrenceId, eo.startTime, eo.endTime);
-}
-
-QList<CalendarData::Attendee> CalendarManager::getEventAttendees(const QString &uid, const QDateTime &recurrenceId, bool *resultValid)
-{
-    const CalendarData::Incidence &incidence = getIncidence(uid, recurrenceId);
-    if (incidence.data) {
-        if (resultValid)
-            *resultValid = true;
-        return CalendarUtils::getEventAttendees(incidence.data);
-    } else if (resultValid) {
-        *resultValid = false;
-    }
-    return QList<CalendarData::Attendee>();
 }
 
 void CalendarManager::dataLoadedSlot(const QList<CalendarData::Range> &ranges,

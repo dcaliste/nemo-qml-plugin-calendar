@@ -723,15 +723,6 @@ void CalendarWorker::loadNotebooks()
     }
 }
 
-
-CalendarData::EventOccurrence CalendarWorker::getNextOccurrence(const QString &uid,
-                                                                const QDateTime &recurrenceId,
-                                                                const QDateTime &start) const
-{
-    KCalendarCore::Event::Ptr event = mCalendar->event(uid, recurrenceId);
-    return CalendarUtils::getNextOccurrence(event, start);
-}
-
 void CalendarWorker::findMatchingEvent(const QString &invitationFile)
 {
     KCalendarCore::MemoryCalendar::Ptr cal(new KCalendarCore::MemoryCalendar(QTimeZone::systemTimeZone()));

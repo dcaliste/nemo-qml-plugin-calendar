@@ -60,7 +60,7 @@ class CalendarEventModification : public CalendarEvent
     Q_PROPERTY(QString calendarUid READ calendarUid WRITE setCalendarUid NOTIFY calendarUidChanged)
 
 public:
-    CalendarEventModification(CalendarData::Incidence data, QObject *parent = 0);
+    CalendarEventModification(const CalendarStoredEvent &data, QObject *parent = 0);
     explicit CalendarEventModification(QObject *parent = 0);
     ~CalendarEventModification();
 

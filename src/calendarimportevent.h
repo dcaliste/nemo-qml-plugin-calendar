@@ -70,7 +70,6 @@ public:
     CalendarEvent::Response ownerStatus() const;
     bool rsvp() const;
 
-    QList<QObject*> attendees() const;
     QString organizer() const;
     QString organizerEmail() const;
 

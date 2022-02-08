@@ -39,7 +39,7 @@
 #include <QDebug>
 
 CalendarEventQuery::CalendarEventQuery()
-    : mIsComplete(true), mOccurrence(0), mAttendeesCached(false), mEventError(false)
+    : mIsComplete(true), mOccurrence(0), mEventError(false)
 {
     connect(CalendarManager::instance(), SIGNAL(dataUpdated()), this, SLOT(refresh()));
     connect(CalendarManager::instance(), SIGNAL(storageModified()), this, SLOT(refresh()));
@@ -139,15 +139,10 @@ QObject *CalendarEventQuery::occurrence() const
 
 QList<QObject*> CalendarEventQuery::attendees()
 {
-    if (!mAttendeesCached) {
-        bool resultValid = false;
-        mAttendees = CalendarManager::instance()->getEventAttendees(mUid, mRecurrenceId, &resultValid);
-        if (resultValid) {
-            mAttendeesCached = true;
-        }
-    }
-
-    return CalendarUtils::convertAttendeeList(mAttendees);
+    if (mEvent.data && mEvent.data->uid() == mUid)
+        return CalendarManager::instance()->eventObject(mUid, mRecurrenceId)->attendees();
+    else
+        return QList<QObject*>();
 }
 
 void CalendarEventQuery::classBegin()
@@ -169,6 +164,10 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
 
     bool updateOccurrence = false;
     bool signalEventChanged = false;
+    bool signalAttendeesChanged = (!event.data && mEvent.data)
+        || (event.data && !mEvent.data)
+        || (event.data && mEvent.data
+            && event.data->attendees() != mEvent.data->attendees());
 
     if (!mEvent.data || event.data->uid() != mEvent.data->uid()
         || event.data->recurrenceId() != mEvent.data->recurrenceId()) {
@@ -192,11 +191,13 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
         mOccurrence = 0;
 
         if (mEvent.data) {
-            CalendarEventOccurrence *occurrence = CalendarManager::instance()->getNextOccurrence(
-                    mUid, mRecurrenceId, mStartTime);
-            if (occurrence) {
-                mOccurrence = occurrence;
-                mOccurrence->setParent(this);
+            CalendarData::EventOccurrence eo = CalendarUtils::getNextOccurrence(mEvent.data, mStartTime);
+            if (eo.startTime.isValid()) {
+                mOccurrence =
+                    new CalendarEventOccurrence(eo.eventUid, eo.recurrenceId,
+                                                eo.startTime, eo.endTime, this);
+            } else {
+                qWarning() << Q_FUNC_INFO << "Unable to find occurrence for event" << mUid << mRecurrenceId;
             }
         }
         emit occurrenceChanged();
@@ -205,15 +206,8 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
     if (signalEventChanged)
         emit eventChanged();
 
-    // check if attendees have changed.
-    bool resultValid = false;
-    QList<CalendarData::Attendee> attendees = CalendarManager::instance()->getEventAttendees(
-            mUid, mRecurrenceId, &resultValid);
-    if (resultValid && mAttendees != attendees) {
-        mAttendees = attendees;
-        mAttendeesCached = true;
+    if (signalAttendeesChanged)
         emit attendeesChanged();
-    }
 
     if (mEventError != eventError) {
         mEventError = eventError;

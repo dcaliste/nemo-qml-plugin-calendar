@@ -42,7 +42,6 @@
 
 #include "calendardata.h"
 #include "calendarevent.h"
-#include "calendareventmodification.h"
 #include "calendarchangeinformation.h"
 
 #include <KCalendarCore/Incidence>
@@ -65,7 +64,6 @@ public:
     ~CalendarManager();
 
     CalendarStoredEvent* eventObject(const QString &eventUid, const QDateTime &recurrenceId);
-    CalendarEventModification* eventModification(const QString &eventUid, const QDateTime &recurrenceId) const;
 
     void saveModification(const CalendarData::Incidence &eventData);
     CalendarChangeInformation * replaceOccurrence(const CalendarData::Incidence &eventData,
@@ -106,12 +104,7 @@ public:
     void unRegisterInvitationQuery(CalendarInvitationQuery *query);
 
     // Caller gets ownership of returned CalendarEventOccurrence object
-    // Does synchronous DB thread access - no DB operations, though, fast when no ongoing DB ops
-    CalendarEventOccurrence* getNextOccurrence(const QString &uid, const QDateTime &recurrenceId,
-                                               const QDateTime &start);
     CalendarEventOccurrence* getOccurrence(const QString &instanceIdentifier, bool *loaded) const;
-    // return attendees for given event, synchronous call
-    QList<CalendarData::Attendee> getEventAttendees(const QString &uid, const QDateTime &recurrenceId, bool *resultValid);
 
 private slots:
     void storageModifiedSlot(const QString &info);

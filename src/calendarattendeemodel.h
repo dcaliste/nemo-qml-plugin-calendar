@@ -3,7 +3,7 @@
 
 #include <QVector>
 #include <QAbstractListModel>
-#include "calendareventquery.h"
+#include "calendarevent.h"
 
 class CalendarAttendeeModel : public QAbstractListModel
 {

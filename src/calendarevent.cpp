@@ -52,9 +52,9 @@ CalendarEvent::CalendarEvent(KCalendarCore::Incidence::Ptr incidence, QObject *p
     cacheIncidence();
 }
 
-CalendarEvent::CalendarEvent(const CalendarData::Incidence &incidence, QObject *parent)
+CalendarEvent::CalendarEvent(const CalendarEvent &event, QObject *parent)
     : QObject(parent)
-    , mIncidence(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(incidence.data->clone()), incidence.notebookUid})
+    , mIncidence(CalendarData::Incidence{KCalendarCore::Incidence::Ptr(event.mIncidence.data->clone()), event.mIncidence.notebookUid})
 {
     cacheIncidence();
 }
@@ -469,6 +469,67 @@ QString CalendarEvent::recurrenceIdString() const
     } else {
         return QString();
     }
+}
+
+QList<QObject*> CalendarEvent::attendees()
+{
+    // List of Person object are computed on demand-only.
+    if (mAttendees.isEmpty())
+        mAttendees = getIncidenceAttendees();
+    return mAttendees;
+}
+
+QList<QObject*> CalendarEvent::getIncidenceAttendees() const
+{
+    QList<QObject*> result;
+
+    const KCalendarCore::Person &organizer = mIncidence.data->organizer();
+    if (!organizer.email().isEmpty())
+        result.append(new Person(organizer.name(), organizer.email(), true,
+                                 Person::ChairParticipant, Person::UnknownParticipation));
+
+    const KCalendarCore::Attendee::List attendees = mIncidence.data->attendees();
+    for (const KCalendarCore::Attendee &attendee : attendees) {
+        if (attendee.name() == organizer.name()
+            && attendee.email() == organizer.email()) {
+            // avoid duplicate info
+            continue;
+        }
+        Person::AttendeeRole role;
+        switch (attendee.role()) {
+        case KCalendarCore::Attendee::ReqParticipant:
+            role = Person::RequiredParticipant;
+            break;
+        case KCalendarCore::Attendee::OptParticipant:
+            role = Person::OptionalParticipant;
+            break;
+        case KCalendarCore::Attendee::Chair:
+            role = Person::ChairParticipant;
+            break;
+        default:
+            role = Person::NonParticipant;
+            break;
+        }
+
+        Person::ParticipationStatus status;
+        switch (attendee.status()) {
+        case KCalendarCore::Attendee::Accepted:
+            status = Person::AcceptedParticipation;
+            break;
+        case KCalendarCore::Attendee::Declined:
+            status = Person::DeclinedParticipation;
+            break;
+        case KCalendarCore::Attendee::Tentative:
+            status = Person::TentativeParticipation;
+            break;
+        default:
+            status = Person::UnknownParticipation;
+        }
+        result.append(new Person(attendee.name(), attendee.email(), false,
+                                 role, status));
+    }
+
+    return result;
 }
 
 CalendarStoredEvent::CalendarStoredEvent(CalendarManager *manager, const CalendarData::Incidence &incidence)

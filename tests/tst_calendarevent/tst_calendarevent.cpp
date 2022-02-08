@@ -348,7 +348,7 @@ void tst_CalendarEvent::testRecurrenceException()
 
         QTest::qWait(100);
     }
-    CalendarEvent *savedEvent = (CalendarEvent*) query.event();
+    CalendarStoredEvent *savedEvent = (CalendarStoredEvent*) query.event();
     QVERIFY(savedEvent);
     QVERIFY(query.occurrence());
 
@@ -395,7 +395,7 @@ void tst_CalendarEvent::testRecurrenceException()
     QVERIFY(eventChangeSpy.count() > 0);
     QVERIFY(query.event());
 
-    recurrenceException = calendarApi->createModification(static_cast<CalendarEvent*>(query.event()));
+    recurrenceException = calendarApi->createModification(static_cast<CalendarStoredEvent*>(query.event()));
     QVERIFY(recurrenceException != 0);
 
     modifiedSecond = modifiedSecond.addSecs(20*60); // 12:30

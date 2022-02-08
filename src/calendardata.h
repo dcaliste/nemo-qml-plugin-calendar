@@ -94,22 +94,6 @@ struct Notebook {
 
 typedef QPair<QDate,QDate> Range;
 
-struct Attendee {
-    bool isOrganizer = false;
-    QString name;
-    QString email;
-    KCalendarCore::Attendee::Role participationRole = KCalendarCore::Attendee::OptParticipant;
-    KCalendarCore::Attendee::PartStat status = KCalendarCore::Attendee::None;
-
-    bool operator==(const Attendee &other) const {
-        return isOrganizer == other.isOrganizer
-                && name == other.name
-                && email == other.email
-                && participationRole == other.participationRole
-                && status == other.status;
-    }
-};
-
 struct EmailContact {
     EmailContact(const QString &aName, const QString &aEmail)
         : name(aName), email(aEmail) {}

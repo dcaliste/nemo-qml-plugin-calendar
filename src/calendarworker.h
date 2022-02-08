@@ -81,9 +81,6 @@ public slots:
     void loadData(const QList<CalendarData::Range> &ranges,
                   const QStringList &instanceList, bool reset);
 
-    CalendarData::EventOccurrence getNextOccurrence(const QString &uid, const QDateTime &recurrenceId,
-                                                    const QDateTime &startTime) const;
-
     void findMatchingEvent(const QString &invitationFile);
 
 signals:

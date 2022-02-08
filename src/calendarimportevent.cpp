@@ -34,7 +34,6 @@
 
 #include "calendareventoccurrence.h"
 #include "calendarutils.h"
-#include "calendarmanager.h"
 
 #include <QDebug>
 
@@ -46,11 +45,6 @@ CalendarImportEvent::CalendarImportEvent(KCalendarCore::Event::Ptr event)
 bool CalendarImportEvent::readOnly() const
 {
     return true;
-}
-
-QList<QObject *> CalendarImportEvent::attendees() const
-{
-    return CalendarUtils::convertAttendeeList(CalendarUtils::getEventAttendees(mIncidence.data));
 }
 
 QString CalendarImportEvent::organizer() const

@@ -38,6 +38,53 @@
 
 #include "calendardata.h"
 
+class Person : public QObject
+{
+    Q_OBJECT
+    Q_ENUMS(AttendeeRole)
+    Q_ENUMS(ParticipationStatus)
+    Q_PROPERTY(QString name READ name CONSTANT FINAL)
+    Q_PROPERTY(QString email READ email CONSTANT FINAL)
+    Q_PROPERTY(bool isOrganizer READ isOrganizer CONSTANT FINAL)
+    Q_PROPERTY(int participationRole READ participationRole CONSTANT FINAL)
+    Q_PROPERTY(int participationStatus READ participationStatus CONSTANT FINAL)
+
+public:
+    enum AttendeeRole {
+        RequiredParticipant,
+        OptionalParticipant,
+        NonParticipant,
+        ChairParticipant
+    };
+
+    enum ParticipationStatus {
+        UnknownParticipation,
+        AcceptedParticipation,
+        DeclinedParticipation,
+        TentativeParticipation
+    };
+
+    Person(const QString &aName, const QString &aEmail, bool aIsOrganizer, AttendeeRole aParticipationRole,
+           ParticipationStatus aStatus)
+        : m_name(aName), m_email(aEmail), m_isOrganizer(aIsOrganizer), m_participationRole(aParticipationRole),
+          m_participationStatus(aStatus)
+    {
+    }
+
+    QString name() const { return m_name; }
+    QString email() const { return m_email; }
+    bool isOrganizer() const { return m_isOrganizer; }
+    int participationRole() const { return m_participationRole; }
+    int participationStatus() const { return m_participationStatus; }
+
+private:
+    QString m_name;
+    QString m_email;
+    bool m_isOrganizer;
+    int m_participationRole;
+    int m_participationStatus;
+};
+
 class CalendarEvent : public QObject
 {
     Q_OBJECT
@@ -132,7 +179,7 @@ public:
 
     CalendarEvent(QObject *parent);
     CalendarEvent(KCalendarCore::Incidence::Ptr incidence, QObject *parent);
-    CalendarEvent(const CalendarData::Incidence &incidence, QObject *parent);
+    CalendarEvent(const CalendarEvent &event, QObject *parent);
     ~CalendarEvent();
 
     QString displayLabel() const;
@@ -163,6 +210,7 @@ public:
     Response ownerStatus() const;
     bool rsvp() const;
     bool externalInvitation() const;
+    QList<QObject*> attendees();
 
 signals:
     void displayLabelChanged();
@@ -203,6 +251,7 @@ protected:
     bool mExternalInvitation = false;
     Response mOwnerStatus = ResponseUnspecified;
     QString mNotebookColor;
+    QList<QObject*> mAttendees;
 
 private:
     int getIncidenceReminder() const;
@@ -211,6 +260,7 @@ private:
     CalendarEvent::Recur getIncidenceRecurrence() const;
     CalendarEvent::Days getIncidenceDayPositions() const;
     void updateIncidenceRecurrence() const;
+    QList<QObject*> getIncidenceAttendees() const;
 };
 
 class CalendarManager;
