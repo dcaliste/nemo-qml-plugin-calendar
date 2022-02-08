@@ -54,10 +54,8 @@ CalendarEventModification *CalendarApi::createNewEvent()
 CalendarEventModification * CalendarApi::createModification(CalendarEvent *sourceEvent)
 {
     if (sourceEvent) {
-        CalendarData::Incidence data =
-            CalendarManager::instance()->getIncidence(sourceEvent->uniqueId(),
-                                                      sourceEvent->recurrenceId());
-        return new CalendarEventModification(data);
+        return CalendarManager::instance()->eventModification(sourceEvent->uniqueId(),
+                                                              sourceEvent->recurrenceId());
     } else {
         qWarning("Null event passed to Calendar.getModification(). Returning new event.");
         return createNewEvent();

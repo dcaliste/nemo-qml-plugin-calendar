@@ -214,12 +214,12 @@ private:
 };
 
 class CalendarManager;
-class CalendarManagedEvent : public CalendarEvent
+class CalendarStoredEvent : public CalendarEvent
 {
     Q_OBJECT
 public:
-    CalendarManagedEvent(CalendarManager *manager, const CalendarData::Incidence &incidence);
-    ~CalendarManagedEvent();
+    CalendarStoredEvent(CalendarManager *manager, const CalendarData::Incidence &incidence);
+    ~CalendarStoredEvent();
 
     void setIncidence(const CalendarData::Incidence &incidence);
 

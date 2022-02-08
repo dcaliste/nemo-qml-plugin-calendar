@@ -471,19 +471,19 @@ QString CalendarEvent::recurrenceIdString() const
     }
 }
 
-CalendarManagedEvent::CalendarManagedEvent(CalendarManager *manager, const CalendarData::Incidence &incidence)
+CalendarStoredEvent::CalendarStoredEvent(CalendarManager *manager, const CalendarData::Incidence &incidence)
     : CalendarEvent(manager)
     , mManager(manager)
 {
     connect(mManager, &CalendarManager::notebookColorChanged,
-            this, &CalendarManagedEvent::notebookColorChanged);
+            this, &CalendarStoredEvent::notebookColorChanged);
     // connect(mManager, SIGNAL(eventUidChanged(QString,QString)),
     //         this, SLOT(eventUidChanged(QString,QString)));
     if (!incidence.data->uid().isEmpty())
         setIncidence(incidence);
 }
 
-CalendarManagedEvent::~CalendarManagedEvent()
+CalendarStoredEvent::~CalendarStoredEvent()
 {
 }
 
@@ -522,7 +522,7 @@ static CalendarEvent::Response convertResponseType(const QString &responseType)
     }
 }
 
-bool CalendarManagedEvent::getIncidenceResponse(const QString &calendarEmail, CalendarEvent::Response *response) const
+bool CalendarStoredEvent::getIncidenceResponse(const QString &calendarEmail, CalendarEvent::Response *response) const
 {
     // It would be good to set the attendance status directly in the event within the plugin,
     // however in some cases the account email and owner attendee email won't necessarily match
@@ -553,7 +553,7 @@ static bool getExternalInvitation(const QString &organizerEmail, const CalendarD
             && !notebook.sharedWith.contains(organizerEmail);
 }
 
-void CalendarManagedEvent::setIncidence(const CalendarData::Incidence &incidence)
+void CalendarStoredEvent::setIncidence(const CalendarData::Incidence &incidence)
 {
     CalendarEvent::Recur oldRecur = mRecur;
     CalendarEvent::Days oldDays = mRecurWeeklyDays;
@@ -623,24 +623,24 @@ void CalendarManagedEvent::setIncidence(const CalendarData::Incidence &incidence
         emit colorChanged();
 }
 
-bool CalendarManagedEvent::sendResponse(int response)
+bool CalendarStoredEvent::sendResponse(int response)
 {
     return mManager->sendResponse(mIncidence.data->uid(), mIncidence.data->recurrenceId(), (Response)response);
 }
 
-void CalendarManagedEvent::deleteEvent()
+void CalendarStoredEvent::deleteEvent()
 {
     mManager->deleteEvent(mIncidence.data->uid(), mIncidence.data->recurrenceId(), QDateTime());
     mManager->save();
 }
 
 // Returns the event as a iCalendar string
-QString CalendarManagedEvent::iCalendar(const QString &prodId) const
+QString CalendarStoredEvent::iCalendar(const QString &prodId) const
 {
     return mManager->convertEventToICalendarSync(mIncidence.data->uid(), prodId);
 }
 
-void CalendarManagedEvent::notebookColorChanged(QString notebookUid)
+void CalendarStoredEvent::notebookColorChanged(QString notebookUid)
 {
     if (mIncidence.notebookUid == notebookUid)
         emit colorChanged();

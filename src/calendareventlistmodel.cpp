@@ -118,10 +118,10 @@ void CalendarEventListModel::doRefresh()
 
     for (const QString &id : mIdentifiers) {
         bool loaded;
-        const CalendarData::Incidence &incidence = CalendarManager::instance()->getIncidence(id, &loaded);
-        if (incidence.data) {
-            mEvents.append(new CalendarEventOccurrence(incidence.data->uid(), incidence.data->recurrenceId(),
-                                                       incidence.data->dtStart(), incidence.data->type() == KCalendarCore::IncidenceBase::TypeEvent ? incidence.data.staticCast<KCalendarCore::Event>()->dtEnd() : QDateTime(), this));
+        CalendarEventOccurrence *occurrence = CalendarManager::instance()->getOccurrence(id, &loaded);
+        if (occurrence) {
+            occurrence->setParent(this);
+            mEvents.append(occurrence);
             mEventIdentifiers.append(id);
         } else if (loaded) {
             mMissingItems.append(id);
