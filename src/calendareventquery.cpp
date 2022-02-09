@@ -116,6 +116,7 @@ void CalendarEventQuery::setStartTime(const QDateTime &t)
     mStartTime = t;
     emit startTimeChanged();
 
+    mResetOccurrence = true;
     refresh();
 }
 
@@ -162,14 +163,14 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
     if (event.data && (event.data->uid() != mUid || event.data->recurrenceId() != mRecurrenceId))
         return;
 
-    bool updateOccurrence = false;
+    bool updateOccurrence = mResetOccurrence;
     bool signalEventChanged = false;
     bool signalAttendeesChanged = (!event.data && mEvent.data)
         || (event.data && !mEvent.data)
         || (event.data && mEvent.data
             && event.data->attendees() != mEvent.data->attendees());
 
-    if (!mEvent.data || event.data->uid() != mEvent.data->uid()
+    if (!mEvent.data || !event.data || event.data->uid() != mEvent.data->uid()
         || event.data->recurrenceId() != mEvent.data->recurrenceId()) {
         mEvent = event;
         signalEventChanged = true;
@@ -189,6 +190,7 @@ void CalendarEventQuery::doRefresh(const CalendarData::Incidence &event, bool ev
     if (updateOccurrence) { // Err on the safe side: always update occurrence if it may have changed
         delete mOccurrence;
         mOccurrence = 0;
+        mResetOccurrence = false;
 
         if (mEvent.data) {
             // Need to take into account exceptions, which are not part of event.data

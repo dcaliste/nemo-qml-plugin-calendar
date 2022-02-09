@@ -103,6 +103,7 @@ private:
     QString mUid;
     QDateTime mRecurrenceId;
     QDateTime mStartTime;
+    bool mResetOccurrence = false;
     CalendarData::Incidence mEvent;
     CalendarEventOccurrence *mOccurrence;
     bool mEventError;

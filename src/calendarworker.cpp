@@ -318,7 +318,7 @@ void CalendarWorker::replaceOccurrence(const CalendarData::Incidence &eventData,
         return;
     }
 
-    KCalendarCore::Incidence::Ptr event = mCalendar->incidence(eventData.data->uid(), eventData.data->recurrenceId());
+    KCalendarCore::Incidence::Ptr event = mCalendar->incidence(eventData.data->uid());
     if (!event) {
         qWarning("Event to create occurrence replacement for not found");
         emit occurrenceExceptionFailed(eventData, startTime);
@@ -339,6 +339,13 @@ void CalendarWorker::replaceOccurrence(const CalendarData::Incidence &eventData,
         emit occurrenceExceptionFailed(eventData, startTime);
         return;
     }
+    // Very ugly hack waiting for a better solution.
+    KCalendarCore::Incidence::Ptr exception(eventData.data->clone());
+    exception->setCreated(QDateTime::currentDateTimeUtc());
+    exception->setRevision(0);
+    exception->clearRecurrence();
+    exception->setRecurrenceId(replacementIncidence->recurrenceId());
+    replacementIncidence = exception;
 
     if (mCalendar->addIncidence(replacementIncidence, eventData.notebookUid)) {
         emit occurrenceExceptionCreated(eventData, startTime, replacementIncidence->recurrenceId());
@@ -631,21 +638,25 @@ CalendarData::EventOccurrence CalendarWorker::nextOccurrence(const QString &uid,
     eo.recurrenceId = recurrenceId;
     eo.eventAllDay = event->allDay();
     const QTimeZone systemTimeZone = QTimeZone::systemTimeZone();
-    KCalendarCore::OccurrenceIterator it(*mCalendar, event, start);
-    if (!start.isNull() && it.hasNext()) {
+    KCalendarCore::OccurrenceIterator it(*mCalendar, event, start.addSecs(-1), start.addDays(3650));
+    while (start.isValid() && it.hasNext()) {
         it.next();
-        eo.startTime = it.occurrenceStartDate().toTimeZone(systemTimeZone);
-        //eo.endTime = it.occurrenceEndDate().toTimeZone(systemTimeZone);
-        if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
-            eo.endTime = KCalendarCore::Duration(event->dtStart(), event.staticCast<KCalendarCore::Event>()->dtEnd()).end(eo.startTime).toTimeZone(systemTimeZone);
-    } else if (!start.isNull() && event->recurs()) {
+        if (recurrenceId == it.incidence()->recurrenceId()) {
+            eo.startTime = it.occurrenceStartDate().toTimeZone(systemTimeZone);
+            //eo.endTime = it.occurrenceEndDate().toTimeZone(systemTimeZone);
+            if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
+                eo.endTime = KCalendarCore::Duration(event->dtStart(), event.staticCast<KCalendarCore::Event>()->dtEnd()).end(eo.startTime).toTimeZone(systemTimeZone);
+            break;
+        }
+    }
+    if (eo.startTime.isNull() && start.isValid() && event->recurs()) {
         const QDateTime match = event->recurrence()->getPreviousDateTime(start);
         if (match.isValid()) {
             eo.startTime = match.toTimeZone(systemTimeZone);
             if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
                 eo.endTime = KCalendarCore::Duration(event->dtStart(), event.staticCast<KCalendarCore::Event>()->dtEnd()).end(match).toTimeZone(systemTimeZone);
         }
-    } else {
+    } else if (eo.startTime.isNull()) {
         eo.startTime = event->dtStart().toTimeZone(systemTimeZone);
         if (event->type() == KCalendarCore::IncidenceBase::TypeEvent)
             eo.endTime = event.staticCast<KCalendarCore::Event>()->dtEnd().toTimeZone(systemTimeZone);
