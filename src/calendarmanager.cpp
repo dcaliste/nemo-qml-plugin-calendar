@@ -42,6 +42,8 @@
 #include "calendareventquery.h"
 #include "calendarinvitationquery.h"
 
+#include <asyncsqlitestorage.h>
+
 // kcalendarcore
 #include <KCalendarCore/CalFormat>
 
@@ -56,6 +58,7 @@ CalendarManager::CalendarManager()
     qRegisterMetaType<QHash<QDate,QStringList> >("QHash<QDate,QStringList>");
     qRegisterMetaType<CalendarData::Range>("CalendarData::Range");
     qRegisterMetaType<QList<CalendarData::Range > >("QList<CalendarData::Range>");
+    qRegisterMetaType<QList<mKCal::Notebook> >("QList<mKCal::Notebook>");
     qRegisterMetaType<QList<CalendarData::Notebook> >("QList<CalendarData::Notebook>");
     qRegisterMetaType<QList<CalendarData::EmailContact> >("QList<CalendarData::EmailContact>");
 
@@ -90,6 +93,13 @@ CalendarManager::CalendarManager()
     mTimer->setSingleShot(true);
     mTimer->setInterval(5);
     connect(mTimer, SIGNAL(timeout()), this, SLOT(timeout()));
+
+    mKCal::ExtendedCalendar::Ptr calendar(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
+    mStorage = mKCal::AsyncSqliteStorage::Ptr(new mKCal::AsyncSqliteStorage(calendar));
+    mStorage->registerObserver(this);
+    if (mStorage->open()) {
+        qWarning() << "Cannot open storage.";
+    }
 }
 
 static CalendarManager *managerInstance = nullptr;
@@ -687,6 +697,16 @@ void CalendarManager::notebooksChangedSlot(const QList<CalendarData::Notebook> &
         if (!newDefaultNotebookUid.isEmpty())
             emit defaultNotebookChanged(newDefaultNotebookUid);
     }
+}
+
+void CalendarManager::storageOpened(mKCal::ExtendedStorage *storage)
+{
+    QList<mKCal::Notebook> notebooks;
+    for (const mKCal::Notebook::Ptr &nb : storage->notebooks()) {
+        notebooks << *nb;
+    }
+    QMetaObject::invokeMethod(mCalendarWorker, "loadNotebooks", Qt::QueuedConnection,
+                              Q_ARG(QList<mKCal::Notebook>, notebooks));
 }
 
 CalendarEventOccurrence* CalendarManager::getNextOccurrence(const QString &uid, const QDateTime &recurrenceId,

@@ -109,7 +109,7 @@ signals:
                                    const CalendarData::Event &eventData);
 
 private:
-    void loadNotebooks();
+    void loadNotebooks(const QList<mKCal::Notebook> &notebooks) const;
     QStringList excludedNotebooks() const;
     bool saveExcludeNotebook(const QString &notebookUid, bool exclude);
 

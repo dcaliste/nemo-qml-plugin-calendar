@@ -92,7 +92,6 @@ void CalendarWorker::storageModified(mKCal::ExtendedStorage *storage, const QStr
 
     // External touch of the database. We have no clue what changed.
     // The mCalendar content has been wiped out already.
-    loadNotebooks();
     emit storageModifiedSignal();
 }
 
@@ -337,7 +336,6 @@ void CalendarWorker::init()
     mStorage = mCalendar->defaultStorage(mCalendar);
     mStorage->open();
     mStorage->registerObserver(this);
-    loadNotebooks();
 }
 
 bool CalendarWorker::isOrganizer(const KCalendarCore::Incidence::Ptr &event) const
@@ -755,36 +753,35 @@ static bool serviceIsEnabled(Accounts::Account *account, const QString &syncProf
     return false;
 }
 
-void CalendarWorker::loadNotebooks()
+void CalendarWorker::loadNotebooks(const QList<mKCal::Notebook> &notebooks) const
 {
     QStringList defaultNotebookColors = QStringList() << "#00aeef" << "red" << "blue" << "green" << "pink" << "yellow";
     int nextDefaultNotebookColor = 0;
 
-    const mKCal::Notebook::List notebooks = mStorage->notebooks();
     QSettings settings("nemo", "nemo-qml-plugin-calendar");
 
     QHash<QString, CalendarData::Notebook> newNotebooks;
 
     bool changed = mNotebooks.isEmpty();
     for (int ii = 0; ii < notebooks.count(); ++ii) {
-        mKCal::Notebook::Ptr mkNotebook = notebooks.at(ii);
-        CalendarData::Notebook notebook = mNotebooks.value(mkNotebook->uid(), CalendarData::Notebook());
+        const mKCal::Notebook &mkNotebook = notebooks.at(ii);
+        CalendarData::Notebook notebook = mNotebooks.value(mkNotebook.uid());
 
-        notebook.name = mkNotebook->name();
-        notebook.uid = mkNotebook->uid();
-        notebook.description = mkNotebook->description();
+        notebook.name = mkNotebook.name();
+        notebook.uid = mkNotebook.uid();
+        notebook.description = mkNotebook.description();
         notebook.emailAddress = mKCal::ServiceHandler::instance().emailAddress(mkNotebook, mStorage);
         notebook.isDefault = mStorage->defaultNotebook()
-                && (mkNotebook->uid() == mStorage->defaultNotebook()->uid());
-        notebook.readOnly = mkNotebook->isReadOnly();
-        notebook.localCalendar = mkNotebook->isMaster()
-                && !mkNotebook->isShared()
-                && mkNotebook->pluginName().isEmpty();
+                && (mkNotebook.uid() == mStorage->defaultNotebook()->uid());
+        notebook.readOnly = mkNotebook.isReadOnly();
+        notebook.localCalendar = mkNotebook.isMaster()
+                && !mkNotebook.isShared()
+                && mkNotebook.pluginName().isEmpty();
 
-        notebook.excluded = !mkNotebook->isVisible();
+        notebook.excluded = !mkNotebook.isVisible();
         // To keep backward compatibility:
         if (settings.value("exclude/" + notebook.uid, false).toBool()) {
-            mkNotebook->setIsVisible(false);
+            mkNotebook.setIsVisible(false);
             if (notebook.excluded || mStorage->updateNotebook(mkNotebook)) {
                 settings.remove("exclude/" + notebook.uid);
             }
@@ -792,21 +789,21 @@ void CalendarWorker::loadNotebooks()
         }
 
         const QString &confColor = settings.value("colors/" + notebook.uid, QString()).toString();
-        const QString &notebookColor = confColor.isEmpty() ? mkNotebook->color() : confColor;
+        const QString &notebookColor = confColor.isEmpty() ? mkNotebook.color() : confColor;
         const bool confHasColor = !confColor.isEmpty();
         notebook.color = notebookColor.isEmpty()
                        ? defaultNotebookColors.at((nextDefaultNotebookColor++) % defaultNotebookColors.count())
                        : notebookColor;
         bool canRemoveConf = true;
-        if (notebook.color != mkNotebook->color()) {
-            mkNotebook->setColor(notebook.color);
+        if (notebook.color != mkNotebook.color()) {
+            mkNotebook.setColor(notebook.color);
             canRemoveConf = mStorage->updateNotebook(mkNotebook);
         }
         if (confHasColor && canRemoveConf) {
             settings.remove("colors/" + notebook.uid);
         }
 
-        QString accountStr = mkNotebook->account();
+        QString accountStr = mkNotebook.account();
         if (!accountStr.isEmpty()) {
             if (!mAccountManager) {
                 mAccountManager = new Accounts::Manager(this);
@@ -816,7 +813,7 @@ void CalendarWorker::loadNotebooks()
             if (ok && accountId > 0) {
                 Accounts::Account *account = Accounts::Account::fromId(mAccountManager, accountId, this);
                 if (account) {
-                    if (!serviceIsEnabled(account, mkNotebook->syncProfile())) {
+                    if (!serviceIsEnabled(account, mkNotebook.syncProfile())) {
                         continue;
                     }
                     notebook.accountId = accountId;

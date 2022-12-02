@@ -43,6 +43,9 @@
 #include "calendardata.h"
 #include "calendarevent.h"
 
+#include <asyncsqlitestorage.h>
+#include <extendedstorageobserver.h>
+
 class CalendarWorker;
 class CalendarAgendaModel;
 class CalendarEventListModel;
@@ -50,7 +53,7 @@ class CalendarEventOccurrence;
 class CalendarEventQuery;
 class CalendarInvitationQuery;
 
-class CalendarManager : public QObject
+class CalendarManager : public QObject, public mKCal::ExtendedStorageObserver
 {
     Q_OBJECT
 private:
@@ -146,8 +149,11 @@ private:
     void updateAgendaModel(CalendarAgendaModel *model);
     void sendEventChangeSignals(const CalendarData::Event &newEvent);
 
+    void storageOpened(mKCal::ExtendedStorage *storage) override;
+
     QThread mWorkerThread;
     CalendarWorker *mCalendarWorker;
+    mKCal::AsyncSqliteStorage::Ptr mStorage;
     QMultiHash<QString, CalendarData::Event> mEvents;
     QMultiHash<QString, CalendarStoredEvent *> mEventObjects;
     QHash<QString, CalendarData::EventOccurrence> mEventOccurrences;
