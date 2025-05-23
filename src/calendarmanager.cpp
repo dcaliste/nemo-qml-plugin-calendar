@@ -183,6 +183,30 @@ CalendarData::Event CalendarManager::dissociateSingleOccurrence(const QString &i
     return event;
 }
 
+bool CalendarManager::hasOccurrenceOn(const QString &instanceId, const QDate &date) const
+{
+    // This will work only if an agenda model was setup for date.
+    for (const QString &id : m_eventOccurrenceForDates.value(date)) {
+        const CalendarData::EventOccurrence &eo = m_eventOccurrences.value(id);
+        if (eo.instanceId == instanceId) {
+            return true;
+        } else {
+            const CalendarData::Event &event = m_events.value(eo.instanceId);
+            if (event.parentInstanceId == instanceId) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void CalendarManager::addOccurrence(const QString &instanceId, const QDate &date) const
+{
+    QMetaObject::invokeMethod(m_calendarWorker, "addOccurrence", Qt::QueuedConnection,
+                              Q_ARG(QString, instanceId),
+                              Q_ARG(QDate, date));
+}
+
 QStringList CalendarManager::excludedNotebooks()
 {
     return m_excludedNotebooks;

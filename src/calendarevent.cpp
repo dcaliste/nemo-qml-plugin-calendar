@@ -338,3 +338,21 @@ CalendarData::Event CalendarStoredEvent::dissociateSingleOccurrence(const Calend
 {
     return occurrence ? m_manager->dissociateSingleOccurrence(m_data->instanceId, occurrence->startTime()) : CalendarData::Event();
 }
+
+bool CalendarStoredEvent::hasOccurrenceOn(const QDate &date) const
+{
+    if (isException()) {
+        return m_manager->hasOccurrenceOn(m_data->parentInstanceId, date);
+    } else {
+        return m_manager->hasOccurrenceOn(m_data->instanceId, date);
+    }
+}
+
+void CalendarStoredEvent::addOccurrence(const QDate &date)
+{
+    if (isException()) {
+        m_manager->addOccurrence(m_data->parentInstanceId, date);
+    } else {
+        m_manager->addOccurrence(m_data->instanceId, date);
+    }
+}

@@ -72,6 +72,7 @@ public slots:
                    const QList<CalendarData::EmailContact> &required,
                    const QList<CalendarData::EmailContact> &optional);
     CalendarData::Event dissociateSingleOccurrence(const QString &instanceId, const QDateTime &datetime);
+    void addOccurrence(const QString &instanceId, const QDate &date);
     void deleteEvent(const QString &instanceId, const QDateTime &dateTime);
     void deleteAll(const QString &instanceId);
     bool sendResponse(const QString &instanceId, const CalendarEvent::Response response);

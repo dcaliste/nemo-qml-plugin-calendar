@@ -382,6 +382,40 @@ CalendarData::Event CalendarWorker::dissociateSingleOccurrence(const QString &in
     return createEventStruct(replacement.staticCast<KCalendarCore::Event>(), notebook);
 }
 
+void CalendarWorker::addOccurrence(const QString &instanceId, const QDate &date)
+{
+    KCalendarCore::Incidence::Ptr event = m_calendar->instance(instanceId);
+    if (!event || event->hasRecurrenceId()) {
+        qWarning("Event to create occurrence for not found or already an exception");
+        return;
+    }
+    if (event->dtStart().date() == date
+        || event->recursOn(date, QTimeZone::systemTimeZone())) {
+        qWarning("Unable to create an occurence, one already exists");
+        return;
+    }
+    event->startUpdates();
+    if (!event->recurs()) {
+        event->recurrence()->addRDateTime(event->dtStart());
+    }
+    KCalendarCore::DateList exDates = event->recurrence()->exDates();
+    if (exDates.removeAll(date) > 0) {
+        event->recurrence()->setExDates(exDates);
+    } else {
+        QDateTime dateTime = event->dtStart();
+        dateTime.setDate(date);
+        QList<QDateTime> exDateTimes = event->recurrence()->exDateTimes();
+        if (exDateTimes.removeAll(dateTime) > 0) {
+            event->recurrence()->setExDateTimes(exDateTimes);
+        } else {
+            event->recurrence()->addRDate(date);
+        }
+    }
+    event->setRevision(event->revision() + 1);
+    event->endUpdates();
+    save();
+}
+
 void CalendarWorker::init()
 {
     m_calendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));

@@ -77,6 +77,8 @@ public:
     CalendarData::Event getEvent(const QString& instanceId, bool *loaded = nullptr) const;
     CalendarData::Event dissociateSingleOccurrence(const QString &instanceId, const QDateTime &datetime) const;
     bool sendResponse(const QString &instanceId, CalendarEvent::Response response);
+    bool hasOccurrenceOn(const QString &instanceId, const QDate &date) const;
+    void addOccurrence(const QString &instanceId, const QDate &date) const;
 
     // Notebooks
     QList<CalendarData::Notebook> notebooks();

@@ -219,6 +219,8 @@ public:
     Q_INVOKABLE bool sendResponse(int response);
     Q_INVOKABLE QString iCalendar(const QString &prodId = QString()) const;
     Q_INVOKABLE void deleteEvent();
+    Q_INVOKABLE bool hasOccurrenceOn(const QDate &date) const;
+    Q_INVOKABLE void addOccurrence(const QDate &date);
 
 signals:
     void colorChanged();
