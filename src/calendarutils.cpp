@@ -53,8 +53,8 @@ CalendarData::Event::Event(const KCalendarCore::Event &event)
     , startTime(event.dtStart())
     , endTime(event.dtEnd())
     , allDay(event.allDay())
-    , instanceId(event.instanceIdentifier())
-    , incidenceUid(event.uid())
+    , instanceId(event.instanceIdentifier()) // TODO: add a notebook prefix
+    , parentInstanceId(event.uid()) // TODO: add a notebook prefix
     , recurrenceId(event.recurrenceId())
     , location(event.location())
 {

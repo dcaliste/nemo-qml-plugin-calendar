@@ -71,7 +71,7 @@ struct Event {
     int reminder = -1; // seconds; 15 minutes before event = +900, at time of event = 0, no reminder = negative value.
     QDateTime reminderDateTime; // Valid when reminder is at a given date and time.
     QString instanceId; // A unique ID, used to identify an instance (incidence or exception) throughout calendars
-    QString incidenceUid; // The uid of the incidence, shared between parent and exceptions
+    QString parentInstanceId; // The uid of the parent incidence
     QDateTime recurrenceId; // An id identifying an exception
     QString calendarUid; // The uid of the calendar the instance belong to
     QString location;

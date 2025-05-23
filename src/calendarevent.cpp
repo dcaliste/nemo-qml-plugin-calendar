@@ -283,9 +283,7 @@ QString CalendarStoredEvent::iCalendar(const QString &prodId) const
 CalendarStoredEvent* CalendarStoredEvent::parent() const
 {
     if (isException()) {
-        KCalendarCore::Event event;
-        event.setUid(m_data->incidenceUid);
-        return m_manager->eventObject(event.instanceIdentifier());
+        return m_manager->eventObject(m_data->parentInstanceId);
     } else {
         return nullptr;
     }

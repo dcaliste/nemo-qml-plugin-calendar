@@ -298,7 +298,7 @@ void CalendarWorker::saveEvent(const CalendarData::Event &eventData, bool update
             event->setUid(event->uid().toUpper());
         } else if (eventData.recurrenceId.isValid()) {
             KCalendarCore::Event::Ptr parent =
-                m_calendar->event(eventData.incidenceUid);
+                m_calendar->instance(eventData.parentInstanceId).staticCast<KCalendarCore::Event>();
             if (!parent) {
                 // The parent was removed while the exception was edited.
                 qWarning("Unable to create an exception without parent");
